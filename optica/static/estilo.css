@@ -210,3 +210,8 @@ fieldset.medidas-armazon { border: 1px solid var(--borde); border-radius: var(--
 fieldset.medidas-armazon legend { font-size: 13px; font-weight: 600; color: var(--suave); padding: 0 6px; }
 fieldset.medidas-armazon .medidas { display: grid; gap: 12px 20px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
 fieldset[hidden] { display: none; }
+
+/* Cobros con uno o varios medios de pago */
+.filas-cobro { display: grid; gap: 8px; margin-bottom: 8px; }
+.fila-cobro { display: grid; grid-template-columns: minmax(110px, 160px) minmax(140px, 220px) max-content; justify-content: start; gap: 8px; align-items: center; }
+.cobros .acciones { align-items: center; }

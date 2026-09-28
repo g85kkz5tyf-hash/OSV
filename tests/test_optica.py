@@ -405,3 +405,53 @@ def test_cambiar_laboratorio_desde_la_ficha(client, db):
     assert db.execute("SELECT ejecucion FROM ventas").fetchone()[0] == "Jiki"
     ficha = client.get("/ventas/1").get_data(as_text=True)
     assert '<option selected>Jiki</option>' in ficha
+
+
+def test_cobro_con_varios_medios_al_registrar(client, db):
+    r = vender(client, [{"descripcion": "Lentes", "precio": "5000"}],
+               pago=["2000", "1.500", ""], metodo=["Efectivo", "Prestación", "Tarjeta"])
+    assert r.status_code == 302
+    pagos = [tuple(p) for p in db.execute("SELECT importe, metodo FROM pagos ORDER BY id")]
+    assert pagos == [(200000, "Efectivo"), (150000, "Prestación")]  # la fila vacía se ignora
+
+
+def test_cobro_con_varios_medios_superior_al_total(client, db):
+    r = vender(client, [{"descripcion": "Lentes", "precio": "5000"}],
+               pago=["3000", "3000"], metodo=["Efectivo", "Tarjeta"])
+    assert r.status_code == 200 and "no puede superar el total" in r.get_data(as_text=True)
+    assert db.execute("SELECT COUNT(*) FROM ventas").fetchone()[0] == 0
+
+
+def test_cobrar_el_saldo_con_varios_medios(client, db):
+    vender(client, [{"descripcion": "Lentes", "precio": "5000"}], pago="1000", metodo="Efectivo", estado="En taller")
+    r = client.post("/ventas/1/pago", data={"importe": ["2500", "1500"], "metodo": ["Tarjeta", "Prestación"]},
+                    follow_redirects=True)
+    assert "2 cobros registrados" in r.get_data(as_text=True)
+    assert db.execute("SELECT SUM(importe) FROM pagos").fetchone()[0] == 500000
+    # no se puede cobrar de más aunque se reparta
+    client.post("/ventas/1/pago", data={"importe": ["1", "1"], "metodo": ["Tarjeta", "Efectivo"]})
+    assert db.execute("SELECT COUNT(*) FROM pagos").fetchone()[0] == 3
+    caja = client.get("/caja").get_data(as_text=True)
+    assert "Prestación" in caja and "$ 1.500,00" in caja
+
+
+def test_medio_de_pago_invalido(client, db):
+    r = vender(client, [{"descripcion": "Lentes", "precio": "5000"}], pago="100", metodo="Bizum")
+    assert r.status_code == 200
+    assert db.execute("SELECT COUNT(*) FROM ventas").fetchone()[0] == 0
+
+
+def test_tareas_pendientes_del_taller_propio(client):
+    vender(client, [{"descripcion": "Trabajo taller pendiente"}], lugar="taller", estado="Pendiente")
+    vender(client, [{"descripcion": "Trabajo taller en curso"}], lugar="taller", estado="En taller")
+    vender(client, [{"descripcion": "Trabajo taller listo"}], lugar="taller", estado="Listo para recoger")
+    vender(client, [{"descripcion": "Trabajo de laboratorio"}], lugar="laboratorio", laboratorio="Jiki", estado="En taller")
+    inicio = client.get("/").get_data(as_text=True)
+    tareas = inicio.split("Tareas pendientes", 1)[1]
+    assert "Revisiones próximas" not in inicio
+    assert "Tareas pendientes (2)" in inicio
+    assert "Trabajo taller pendiente" in tareas and "Trabajo taller en curso" in tareas
+    assert "Trabajo taller listo" not in tareas and "Trabajo de laboratorio" not in tareas
+    # al marcarla como lista, sale de las tareas
+    client.post("/ventas/2/cambiar-estado", data={"estado": "Listo para recoger"})
+    assert "Tareas pendientes (1)" in client.get("/").get_data(as_text=True)

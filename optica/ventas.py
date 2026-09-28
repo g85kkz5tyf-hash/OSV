@@ -34,6 +34,27 @@ def leer_ejecucion(form):
     return ""
 
 
+def leer_pagos(form, campo_importe):
+    """Lee uno o varios cobros (importe + medio de pago). Devuelve [(importe, metodo)]."""
+    importes = form.getlist(campo_importe)
+    metodos = form.getlist("metodo")
+    pagos = []
+    for i, texto in enumerate(importes):
+        try:
+            importe = parse_importe(texto)
+        except ValueError as e:
+            raise ErrorVenta(str(e))
+        if importe == 0:
+            continue
+        if importe < 0:
+            raise ErrorVenta("El importe cobrado no puede ser negativo.")
+        metodo = metodos[i] if i < len(metodos) else ""
+        if metodo not in METODOS_PAGO:
+            raise ErrorVenta("Medio de pago no válido.")
+        pagos.append((importe, metodo))
+    return pagos
+
+
 def contexto_ejecucion():
     return {"laboratorios": LABORATORIOS, "taller_propio": TALLER_PROPIO, "colores": COLORES_EJECUCION}
 
@@ -149,10 +170,10 @@ def leer_lineas_formulario(db):
     return lineas
 
 
-def crear_venta(db, cliente_id, receta_id, lineas, estado, entrega_prevista, notas, pago, metodo,
+def crear_venta(db, cliente_id, receta_id, lineas, estado, entrega_prevista, notas, pagos,
                 ejecucion=""):
     total = sum(l["importe"] for l in lineas)
-    if pago > total:
+    if sum(importe for importe, _ in pagos) > total:
         raise ErrorVenta("El importe cobrado no puede superar el total de la venta.")
     numero = siguiente_numero(db)
     cur = db.execute(
@@ -171,9 +192,9 @@ def crear_venta(db, cliente_id, receta_id, lineas, estado, entrega_prevista, not
         )
         if producto and producto["controla_stock"]:
             registrar_movimiento(db, producto["id"], -l["cantidad"], "venta", f"Venta {numero}", venta_id)
-    if pago:
+    for importe, metodo in pagos:
         db.execute(
-            "INSERT INTO pagos (venta_id, importe, metodo) VALUES (?, ?, ?)", (venta_id, pago, metodo)
+            "INSERT INTO pagos (venta_id, importe, metodo) VALUES (?, ?, ?)", (venta_id, importe, metodo)
         )
     return venta_id
 
@@ -186,29 +207,21 @@ def nueva():
         cliente_id = parse_entero(f.get("cliente_id"), None) if f.get("cliente_id", "").isdigit() else None
         receta_id = parse_entero(f.get("receta_id"), None) if f.get("receta_id", "").isdigit() else None
         estado = f.get("estado", "Entregado")
-        metodo = f.get("metodo", METODOS_PAGO[0])
         try:
             if estado not in ESTADOS_VENTA or estado == "Anulada":
                 raise ErrorVenta("Estado no válido.")
-            if metodo not in METODOS_PAGO:
-                raise ErrorVenta("Método de pago no válido.")
             if cliente_id and not db.execute("SELECT 1 FROM clientes WHERE id = ?", (cliente_id,)).fetchone():
                 raise ErrorVenta("El cliente no existe.")
             if receta_id and not db.execute(
                 "SELECT 1 FROM recetas WHERE id = ? AND cliente_id IS ?", (receta_id, cliente_id)
             ).fetchone():
                 raise ErrorVenta("La receta no pertenece al cliente seleccionado.")
-            try:
-                pago = parse_importe(f.get("pago"))
-            except ValueError as e:
-                raise ErrorVenta(str(e))
-            if pago < 0:
-                raise ErrorVenta("El importe cobrado no puede ser negativo.")
+            pagos = leer_pagos(f, "pago")
             ejecucion = leer_ejecucion(f)
             lineas = leer_lineas_formulario(db)
             venta_id = crear_venta(
                 db, cliente_id, receta_id, lineas, estado,
-                f.get("fecha_entrega_prevista", "").strip(), f.get("notas", "").strip(), pago, metodo,
+                f.get("fecha_entrega_prevista", "").strip(), f.get("notas", "").strip(), pagos,
                 ejecucion,
             )
         except ErrorVenta as e:
@@ -250,6 +263,7 @@ def contexto_nueva(form):
         "cliente": cliente, "recetas": recetas, "form": form or {}, "lineas": lineas,
         "estados": [e for e in ESTADOS_VENTA if e != "Anulada"], "metodos": METODOS_PAGO,
         "tipos_iva": TIPOS_IVA, **contexto_ejecucion(),
+        "cobros": list(zip(form.getlist("pago"), form.getlist("metodo"))) if form else [("", METODOS_PAGO[0])],
     }
 
 
@@ -315,22 +329,21 @@ def pago(venta_id):
     venta = obtener_venta(venta_id)
     if venta["estado"] == "Anulada":
         abort(400)
-    metodo = request.form.get("metodo")
     try:
-        importe = parse_importe(request.form.get("importe"))
-    except ValueError as e:
+        pagos = leer_pagos(request.form, "importe")
+    except ErrorVenta as e:
         flash(str(e), "error")
         return redirect(url_for("ventas.detalle", venta_id=venta_id))
     pendiente = venta["total"] - venta["pagado"]
-    if importe <= 0 or importe > pendiente:
+    cobrado = sum(importe for importe, _ in pagos)
+    if not pagos or cobrado > pendiente:
         flash("El importe debe ser mayor que cero y no superar lo pendiente.", "error")
-    elif metodo not in METODOS_PAGO:
-        flash("Método de pago no válido.", "error")
     else:
         db = get_db()
-        db.execute("INSERT INTO pagos (venta_id, importe, metodo) VALUES (?, ?, ?)", (venta_id, importe, metodo))
+        for importe, metodo in pagos:
+            db.execute("INSERT INTO pagos (venta_id, importe, metodo) VALUES (?, ?, ?)", (venta_id, importe, metodo))
         db.commit()
-        flash("Cobro registrado.", "ok")
+        flash("Cobro registrado." if len(pagos) == 1 else f"{len(pagos)} cobros registrados.", "ok")
     return redirect(url_for("ventas.detalle", venta_id=venta_id))
 
 

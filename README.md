@@ -29,13 +29,13 @@ todos los datos quedan guardados en un único archivo (`datos/optica.db`).
   cilindro «−» por defecto, y la adición, DNP y altura se copian al otro ojo.
 - Encargos: estados *Pendiente → En taller → Listo para recoger → Entregado* y fecha de
   entrega prevista.
-- Cobros parciales (señal + resto) con varias formas de pago.
+- Cobros parciales (señal + resto), pudiendo combinar varios medios de pago en un mismo cobro.
 - Comprobante de venta imprimible con desglose de IVA (no sustituye a la facturación electrónica de DGI).
 - Anulación: devuelve los artículos al stock y registra la devolución del dinero.
 
 **Además**
-- Pantalla de inicio con ventas del día y del mes, encargos en curso, stock bajo y revisiones
-  próximas.
+- Pantalla de inicio con ventas del día y del mes, encargos en curso, stock bajo y tareas
+  pendientes del taller propio.
 - Caja del día por forma de pago.
 - Informes anuales por mes, categoría y productos más vendidos.
 - Copia de seguridad descargable con un clic.

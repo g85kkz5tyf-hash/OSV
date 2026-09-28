@@ -56,3 +56,79 @@
   })();
 </script>
 {%- endmacro %}
+
+{% macro filas_cobro(campo, metodos, filas, total=0) -%}
+{# Uno o varios cobros a la vez, cada uno con su importe y su medio de pago #}
+<div class="cobros" data-total="{{ total }}">
+  <div class="filas-cobro">
+    {% for importe, metodo in filas %}
+    <div class="fila-cobro">
+      <input name="{{ campo }}" inputmode="decimal" value="{{ importe }}" placeholder="0,00" aria-label="Importe ($)">
+      <select name="metodo" aria-label="Medio de pago">
+        {% for m in metodos %}<option {{ 'selected' if m == metodo }}>{{ m }}</option>{% endfor %}
+      </select>
+      <button type="button" class="peligro peque quitar-cobro" title="Quitar este cobro">✕</button>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="acciones">
+    <button type="button" class="secundario peque otro-cobro">+ Otro medio de pago</button>
+    <button type="button" class="secundario peque cobrar-resto">Cobrar el resto</button>
+    <span class="suave suma-cobro"></span>
+  </div>
+</div>
+<script>
+(() => {
+  const caja = document.currentScript.previousElementSibling;
+  const filas = caja.querySelector(".filas-cobro");
+  const aCentimos = t => {
+    t = String(t || "").trim().replace("$", "").replace(/\s/g, "");
+    if (!t) return 0;
+    if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
+    else if (/^-?\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, "");
+    const n = Number(t);
+    return isNaN(n) ? 0 : Math.round(n * 100);
+  };
+  const texto = c => Math.floor(c / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "," + String(c % 100).padStart(2, "0");
+  const moneda = c => "$ " + texto(c);
+  const inputs = () => [...filas.querySelectorAll("input")];
+
+  function actualizar() {
+    const suma = inputs().reduce((s, i) => s + aCentimos(i.value), 0);
+    const total = Number(caja.dataset.total) || 0;
+    caja.querySelector(".suma-cobro").textContent = inputs().length > 1 || suma
+      ? `Cobrado: ${moneda(suma)} de ${moneda(total)}` : "";
+  }
+  caja.actualizar = actualizar;
+
+  function prepararFila(fila) {
+    fila.querySelector("input").addEventListener("input", actualizar);
+    fila.querySelector(".quitar-cobro").addEventListener("click", () => {
+      if (filas.children.length > 1) fila.remove(); else fila.querySelector("input").value = "";
+      actualizar();
+    });
+  }
+  [...filas.children].forEach(prepararFila);
+
+  caja.querySelector(".otro-cobro").addEventListener("click", () => {
+    const nueva = filas.lastElementChild.cloneNode(true);
+    nueva.querySelector("input").value = "";
+    // Proponer un medio distinto al de la fila anterior
+    const select = nueva.querySelector("select");
+    select.selectedIndex = (filas.lastElementChild.querySelector("select").selectedIndex + 1) % select.options.length;
+    filas.appendChild(nueva);
+    prepararFila(nueva);
+    nueva.querySelector("input").focus();
+  });
+
+  caja.querySelector(".cobrar-resto").addEventListener("click", () => {
+    const todos = inputs();
+    const destino = todos.find(i => !i.value.trim()) || todos[todos.length - 1];
+    const otros = todos.filter(i => i !== destino).reduce((s, i) => s + aCentimos(i.value), 0);
+    destino.value = texto(Math.max((Number(caja.dataset.total) || 0) - otros, 0));
+    actualizar();
+  });
+  actualizar();
+})();
+</script>
+{%- endmacro %}

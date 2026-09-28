@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros.html" import selector_ejecucion %}
+{% from "macros.html" import selector_ejecucion, filas_cobro %}
 {% block titulo %}Nueva venta{% endblock %}
 {% block contenido %}
 <div class="cabecera"><h1>Nueva venta</h1></div>
@@ -59,16 +59,9 @@
         <label for="fecha_entrega_prevista">Entrega prevista</label>
         <input type="date" id="fecha_entrega_prevista" name="fecha_entrega_prevista" value="{{ form.fecha_entrega_prevista or '' }}">
       </div>
-      <div>
-        <label for="pago">Cobrado ahora ($)</label>
-        <input id="pago" name="pago" inputmode="decimal" value="{{ form.pago or '' }}" placeholder="0,00">
-        <button type="button" class="secundario peque" id="cobrar-todo" style="margin-top:6px">Cobrar total</button>
-      </div>
-      <div>
-        <label for="metodo">Forma de pago</label>
-        <select id="metodo" name="metodo">
-          {% for m in metodos %}<option {{ 'selected' if form.metodo == m }}>{{ m }}</option>{% endfor %}
-        </select>
+      <div style="grid-column: 1 / -1">
+        <label>Cobrado ahora ($) y medio de pago</label>
+        {{ filas_cobro('pago', metodos, cobros) }}
       </div>
       <div style="grid-column: 1 / -1">
         <label for="notas">Notas</label>
@@ -148,6 +141,9 @@ function recalcular() {
     total += imp;
   });
   $("#total").textContent = moneda(total);
+  const cobros = $(".cobros");
+  cobros.dataset.total = total;
+  if (cobros.actualizar) cobros.actualizar();
   return total;
 }
 
@@ -176,9 +172,6 @@ $("#linea-libre").addEventListener("click", () => {
   $("[name=descripcion]", tr).focus();
 });
 
-$("#cobrar-todo").addEventListener("click", () => {
-  $("#pago").value = importeTexto(recalcular());
-});
 
 // --- Buscador genérico ------------------------------------------------------
 function buscador(input, caja, url, pintar, elegir) {

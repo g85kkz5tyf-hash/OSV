@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros.html" import estado as etiqueta_estado, tabla_graduacion, selector_ejecucion %}
+{% from "macros.html" import estado as etiqueta_estado, tabla_graduacion, selector_ejecucion, filas_cobro %}
 {% block titulo %}Venta {{ venta.numero }}{% endblock %}
 {% block contenido %}
 {% set pendiente = venta.total - venta.pagado %}
@@ -81,12 +81,9 @@
 
     {% if venta.estado != 'Anulada' and pendiente > 0 %}
     <h3>Registrar cobro</h3>
-    <form class="filtros" method="post" action="{{ url_for('ventas.pago', venta_id=venta.id) }}">
-      <div style="min-width: 120px; flex: 0"><label for="importe">Importe ($)</label><input id="importe" name="importe" inputmode="decimal" value="{{ pendiente|importe }}" required></div>
-      <div><label for="metodo">Forma de pago</label>
-        <select id="metodo" name="metodo">{% for m in metodos %}<option>{{ m }}</option>{% endfor %}</select>
-      </div>
-      <button type="submit">Cobrar</button>
+    <form method="post" action="{{ url_for('ventas.pago', venta_id=venta.id) }}">
+      {{ filas_cobro('importe', metodos, [(pendiente|importe, metodos[0])], pendiente) }}
+      <p><button type="submit">Cobrar</button></p>
     </form>
     {% endif %}
   </div>

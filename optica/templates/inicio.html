@@ -86,21 +86,34 @@
   </div>
 
   <div class="panel">
-    <h2>Revisiones próximas</h2>
-    {% if revisiones %}
+    <h2>Tareas pendientes ({{ tareas|length }})</h2>
+    <p class="suave" style="margin-top: -6px">Trabajos del taller propio que aún no están listos para recoger.</p>
+    {% if tareas %}
     <table>
-      <thead><tr><th>Cliente</th><th>Teléfono</th><th>Revisión</th></tr></thead>
+      <thead><tr><th>Orden</th><th>Entrega</th><th>Estado</th></tr></thead>
       <tbody>
-      {% for r in revisiones %}
+      {% for t in tareas %}
         <tr>
-          <td><a href="{{ url_for('clientes.ficha', cliente_id=r.cliente_id) }}">{{ r.nombre }} {{ r.apellidos }}</a><br><small class="suave">{{ r.tipo }}</small></td>
-          <td>{{ r.telefono }}</td>
-          <td class="{{ 'aviso' if r.proxima_revision < hoy }}">{{ r.proxima_revision|fecha }}</td>
+          <td>
+            <a href="{{ url_for('ventas.detalle', venta_id=t.id) }}">{{ t.numero }}</a>
+            · {{ t.cliente_nombre or 'Sin cliente' }}
+            <br><small class="suave">{{ t.articulos }}</small>
+          </td>
+          <td class="{{ 'alerta' if t.fecha_entrega_prevista and t.fecha_entrega_prevista < hoy }}">{{ t.fecha_entrega_prevista|fecha or '—' }}</td>
+          <td>
+            <form method="post" action="{{ url_for('ventas.cambiar_estado', venta_id=t.id) }}" class="cambio-estado">
+              <input type="hidden" name="volver" value="{{ request.path }}">
+              <select name="estado" aria-label="Estado de la venta {{ t.numero }}"
+                      class="selector-estado estado-{{ t.estado|replace(' ', '-') }}" data-actual="{{ t.estado }}" data-pendiente="">
+                {% for e in estados %}<option {{ 'selected' if e == t.estado }}>{{ e }}</option>{% endfor %}
+              </select>
+            </form>
+          </td>
         </tr>
       {% endfor %}
       </tbody>
     </table>
-    {% else %}<p class="vacio">No hay revisiones previstas en los próximos 30 días.</p>{% endif %}
+    {% else %}<p class="vacio">No hay trabajos pendientes en el taller propio.</p>{% endif %}
   </div>
 </div>
 {% endblock %}

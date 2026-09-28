@@ -25,7 +25,7 @@ TIPOS_RECETA = [
 ESTADOS_VENTA = ["Pendiente", "En taller", "Listo para recoger", "Entregado", "Anulada"]
 ESTADOS_ABIERTOS = ["Pendiente", "En taller", "Listo para recoger"]
 
-METODOS_PAGO = ["Efectivo", "Tarjeta", "Transferencia", "Financiado"]
+METODOS_PAGO = ["Efectivo", "Tarjeta", "Transferencia", "Financiado", "Prestación"]
 
 CAMPOS_OJO = [
     ("esfera", "Esfera"),

@@ -2,13 +2,13 @@ import os
 import sqlite3
 import tempfile
 import threading
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 from flask import (Blueprint, abort, current_app, flash, redirect, render_template, request,
                    send_file, url_for)
 
-from .constantes import ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO
+from .constantes import TALLER_PROPIO, ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO
 from .db import get_config, get_db, set_config
 
 bp = Blueprint("main", __name__)
@@ -74,21 +74,23 @@ def inicio():
         "SELECT * FROM productos WHERE activo = 1 AND controla_stock = 1 AND stock <= stock_minimo"
         " ORDER BY stock, marca LIMIT 15"
     ).fetchall()
-    revisiones = db.execute(
+    # Trabajos del taller propio que aún no están listos para recoger
+    tareas = db.execute(
         """
-        SELECT r.proxima_revision, r.tipo, c.id AS cliente_id, c.nombre, c.apellidos, c.telefono
-        FROM recetas r JOIN clientes c ON c.id = r.cliente_id
-        WHERE r.proxima_revision != '' AND r.proxima_revision BETWEEN ? AND ?
-          AND r.id = (SELECT id FROM recetas r2 WHERE r2.cliente_id = r.cliente_id
-                      ORDER BY r2.fecha DESC, r2.id DESC LIMIT 1)
-        ORDER BY r.proxima_revision LIMIT 15
+        SELECT v.id, v.numero, v.estado, v.fecha_entrega_prevista, v.cliente_id,
+               TRIM(COALESCE(c.nombre, '') || ' ' || COALESCE(c.apellidos, '')) AS cliente_nombre,
+               (SELECT GROUP_CONCAT(descripcion, ' · ') FROM lineas_venta WHERE venta_id = v.id) AS articulos
+        FROM ventas v LEFT JOIN clientes c ON c.id = v.cliente_id
+        WHERE v.ejecucion = ? AND v.estado IN ('Pendiente', 'En taller')
+        ORDER BY CASE v.fecha_entrega_prevista WHEN '' THEN 1 ELSE 0 END,
+                 v.fecha_entrega_prevista, v.fecha
         """,
-        ((hoy - timedelta(days=30)).isoformat(), (hoy + timedelta(days=30)).isoformat()),
+        (TALLER_PROPIO,),
     ).fetchall()
     return render_template(
         "inicio.html", ventas_hoy=ventas_hoy, ventas_mes=ventas_mes, cobrado_hoy=cobrado_hoy,
         encargos=encargos, pendiente_cobro=pendiente_cobro, stock_bajo=stock_bajo,
-        revisiones=revisiones, hoy=hoy.isoformat(),
+        tareas=tareas, hoy=hoy.isoformat(),
         estados=[e for e in ESTADOS_VENTA if e != "Anulada"],
     )
 
