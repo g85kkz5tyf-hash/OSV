@@ -12,15 +12,15 @@
 </div>
 
 <div class="tarjetas">
-  <div class="tarjeta"><div class="etiqueta">Total comprado</div><div class="valor">{{ resumen.total_comprado|euros }}</div><div class="detalle">{{ resumen.num_compras }} compra{{ 's' if resumen.num_compras != 1 }}</div></div>
-  <div class="tarjeta"><div class="etiqueta">Pendiente de pago</div><div class="valor {{ 'aviso' if resumen.pendiente > 0 }}">{{ resumen.pendiente|euros }}</div></div>
+  <div class="tarjeta"><div class="etiqueta">Total comprado</div><div class="valor">{{ resumen.total_comprado|moneda }}</div><div class="detalle">{{ resumen.num_compras }} compra{{ 's' if resumen.num_compras != 1 }}</div></div>
+  <div class="tarjeta"><div class="etiqueta">Pendiente de pago</div><div class="valor {{ 'aviso' if resumen.pendiente > 0 }}">{{ resumen.pendiente|moneda }}</div></div>
   <div class="tarjeta"><div class="etiqueta">Última receta</div><div class="valor">{{ recetas[0].fecha|fecha if recetas else '—' }}</div><div class="detalle">{{ recetas[0].tipo if recetas }}</div></div>
 </div>
 
 <div class="panel">
   <h2>Datos personales</h2>
   <dl class="datos">
-    <dt>DNI / NIE</dt><dd>{{ cliente.dni or '—' }}</dd>
+    <dt>CI</dt><dd>{{ cliente.dni or '—' }}</dd>
     <dt>Fecha de nacimiento</dt><dd>{{ cliente.fecha_nacimiento|fecha or '—' }}</dd>
     <dt>Teléfono</dt><dd>{% if cliente.telefono %}<a href="tel:{{ cliente.telefono }}">{{ cliente.telefono }}</a>{% else %}—{% endif %}</dd>
     <dt>Email</dt><dd>{% if cliente.email %}<a href="mailto:{{ cliente.email }}">{{ cliente.email }}</a>{% else %}—{% endif %}</dd>
@@ -76,8 +76,8 @@
           {% for l in lineas.get(v.id, []) %}{{ l.cantidad }} × {{ l.descripcion }}{% if not loop.last %}<br>{% endif %}{% endfor %}
         </td>
         <td>{{ estado(v.estado) }}</td>
-        <td class="num">{{ v.total|euros }}</td>
-        <td class="num {{ 'aviso' if v.estado != 'Anulada' and v.total > v.pagado }}">{{ ((v.total - v.pagado) if v.estado != 'Anulada' else 0)|euros }}</td>
+        <td class="num">{{ v.total|moneda }}</td>
+        <td class="num {{ 'aviso' if v.estado != 'Anulada' and v.total > v.pagado }}">{{ ((v.total - v.pagado) if v.estado != 'Anulada' else 0)|moneda }}</td>
       </tr>
     {% endfor %}
     </tbody>

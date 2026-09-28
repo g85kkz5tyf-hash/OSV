@@ -17,7 +17,7 @@ todos los datos quedan guardados en un único archivo (`datos/optica.db`).
 
 **Stock**
 - Productos por categoría (monturas, gafas de sol, lentes oftálmicas, lentes de contacto,
-  líquidos, accesorios, servicios), con precio de coste, PVP e IVA (21 %, 10 %, 4 %, 0 %).
+  líquidos, accesorios, servicios), con precio de coste, precio de venta en pesos uruguayos e IVA de Uruguay (22 %, 10 %, 0 %).
 - Entradas de mercancía y ajustes por recuento, con el historial de movimientos.
 - Aviso de stock bajo, valor del inventario y exportación a Excel (CSV).
 - Productos "por encargo" que no controlan stock (p. ej. lentes graduadas a medida).
@@ -25,10 +25,12 @@ todos los datos quedan guardados en un único archivo (`datos/optica.db`).
 **Ventas**
 - Venta rápida con buscador de productos y clientes, líneas libres y descuentos por línea.
 - Asociación a la receta del cliente.
+- Al escribir una receta, los números se completan con dos decimales, la esfera lleva «+» y el
+  cilindro «−» por defecto, y la adición, DNP y altura se copian al otro ojo.
 - Encargos: estados *Pendiente → En taller → Listo para recoger → Entregado* y fecha de
   entrega prevista.
 - Cobros parciales (señal + resto) con varias formas de pago.
-- Ticket imprimible (factura simplificada con desglose de IVA).
+- Comprobante de venta imprimible con desglose de IVA (no sustituye a la facturación electrónica de DGI).
 - Anulación: devuelve los artículos al stock y registra la devolución del dinero.
 
 **Además**
@@ -51,7 +53,7 @@ marca la casilla *"Add Python to PATH"* al instalar).
 La primera vez tarda un poco porque instala lo necesario. Después se abre el navegador en
 <http://127.0.0.1:8765>. Deja abierta la ventana negra mientras uses el programa.
 
-Lo primero es ir a **Configuración** y poner el nombre, NIF y dirección de la óptica, que
+Lo primero es ir a **Configuración** y poner el nombre, RUT y dirección de la óptica, que
 aparecerán en los tickets y en las recetas impresas.
 
 ### Copias de seguridad

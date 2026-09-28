@@ -56,7 +56,7 @@ http://127.0.0.1:8765 . Escríbela en la barra de direcciones del navegador.
 
 PRIMERA VEZ QUE LO USES
 -----------------------
-Entra en "Configuración" y escribe el nombre, NIF, dirección y teléfono de
+Entra en "Configuración" y escribe el nombre, RUT, dirección y teléfono de
 la óptica. Aparecerán en los tickets y en las recetas impresas.
 
 

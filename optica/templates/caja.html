@@ -13,9 +13,9 @@
 
 <div class="tarjetas">
   {% for metodo, importe in por_metodo.items() %}
-  <div class="tarjeta"><div class="etiqueta">{{ metodo }}</div><div class="valor">{{ importe|euros }}</div></div>
+  <div class="tarjeta"><div class="etiqueta">{{ metodo }}</div><div class="valor">{{ importe|moneda }}</div></div>
   {% endfor %}
-  <div class="tarjeta" style="border-color: var(--primario)"><div class="etiqueta">Total cobrado</div><div class="valor">{{ total|euros }}</div></div>
+  <div class="tarjeta" style="border-color: var(--primario)"><div class="etiqueta">Total cobrado</div><div class="valor">{{ total|moneda }}</div></div>
 </div>
 
 <div class="panel">
@@ -31,7 +31,7 @@
         <td><a href="{{ url_for('ventas.detalle', venta_id=p.venta_id) }}">{{ p.numero }}</a></td>
         <td>{{ p.cliente_nombre or 'Mostrador' }}</td>
         <td>{{ p.metodo }}{{ ' (devolución)' if p.importe < 0 }}</td>
-        <td class="num {{ 'alerta' if p.importe < 0 }}">{{ p.importe|euros }}</td>
+        <td class="num {{ 'alerta' if p.importe < 0 }}">{{ p.importe|moneda }}</td>
       </tr>
     {% endfor %}
     </tbody>

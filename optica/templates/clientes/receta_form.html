@@ -5,7 +5,7 @@
 <div class="cabecera">
   <h1>{{ 'Editar receta' if receta.id else 'Nueva receta' }} · <a href="{{ url_for('clientes.ficha', cliente_id=cliente.id) }}">{{ cliente.nombre }} {{ cliente.apellidos }}</a></h1>
 </div>
-<form method="post">
+<form method="post" id="form-receta" autocomplete="off">
   <div class="panel">
     <div class="campos" style="display:grid; gap:14px 20px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
       {{ campo('fecha', 'Fecha', receta.fecha, tipo='date', extra='required') }}
@@ -37,7 +37,11 @@
       </tbody>
     </table>
     </div>
-    <p class="suave">Esfera, cilindro y adición en dioptrías (p. ej. -1,75). Eje en grados (0–180). DNP y altura en mm.</p>
+    <p class="suave">
+      Los números se completan solos con dos decimales al pasar al siguiente campo (el eje, en grados, va sin decimales).
+      En la esfera se añade «+» y en el cilindro «−» si no escribes el signo.
+      La adición, la DNP y la altura se copian al otro ojo <span class="copiado-muestra">así</span>; puedes cambiarlas si son distintas.
+    </p>
   </div>
 
   <div class="panel">
@@ -59,4 +63,87 @@
     <a class="boton secundario" href="{{ url_for('clientes.ficha', cliente_id=cliente.id) }}">Cancelar</a>
   </div>
 </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Campos con dos decimales y signo por defecto (si no se escribe ninguno)
+const DECIMALES = {
+  esfera: "+", cilindro: "-", adicion: "", prisma: "", av: "", dnp: "", altura: "",
+};
+const COPIAR_AL_OTRO_OJO = ["adicion", "dnp", "altura"];
+const OTRO = { od: "oi", oi: "od" };
+const form = document.getElementById("form-receta");
+const campo = nombre => form.elements[nombre];
+
+function formatear(valor, signoDefecto) {
+  const texto = valor.trim().replace(",", ".");
+  // Solo números: textos como «20/20» o «Neutro» se dejan tal cual
+  if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(texto)) return valor.trim();
+  const n = parseFloat(texto);
+  const cifra = Math.abs(n).toFixed(2).replace(".", ",");
+  if (n === 0) return cifra;
+  if (n < 0) return "-" + cifra;
+  if (texto.startsWith("+")) return "+" + cifra;
+  return signoDefecto + cifra;
+}
+
+function formatearEje(valor) {
+  const texto = valor.trim().replace(",", ".");
+  return /^\d+(\.\d+)?$/.test(texto) ? String(Math.round(parseFloat(texto))) : valor.trim();
+}
+
+function copiar(origen, destino) {
+  if (destino.dataset.copiado === "1" || destino.value.trim() === "") {
+    destino.value = origen.value;
+    destino.dataset.copiado = origen.value ? "1" : "";
+  }
+}
+
+for (const ojo of ["od", "oi"]) {
+  for (const [nombre, signo] of Object.entries(DECIMALES)) {
+    const input = campo(`${ojo}_${nombre}`);
+    input.addEventListener("change", () => {
+      input.value = formatear(input.value, signo);
+      if (COPIAR_AL_OTRO_OJO.includes(nombre)) {
+        const otro = campo(`${OTRO[ojo]}_${nombre}`);
+        if (otro.dataset.copiado === "1") otro.value = input.value;
+      }
+    });
+  }
+  campo(`${ojo}_eje`).addEventListener("change", e => e.target.value = formatearEje(e.target.value));
+
+  for (const nombre of COPIAR_AL_OTRO_OJO) {
+    const input = campo(`${ojo}_${nombre}`);
+    const otro = campo(`${OTRO[ojo]}_${nombre}`);
+    input.addEventListener("input", () => {
+      input.dataset.copiado = "";  // lo ha escrito la persona: ya no se sobrescribe
+      copiar(input, otro);
+    });
+  }
+}
+
+// Al editar una receta con los dos ojos iguales, siguen enlazados
+for (const nombre of COPIAR_AL_OTRO_OJO) {
+  const od = campo(`od_${nombre}`), oi = campo(`oi_${nombre}`);
+  if (od.value && od.value === oi.value) oi.dataset.copiado = "1";
+}
+
+// Lentes de contacto: también con dos decimales
+for (const nombre of ["lc_curva_base", "lc_diametro"]) {
+  campo(nombre).addEventListener("change", e => e.target.value = formatear(e.target.value, ""));
+}
+
+// Formatear todo antes de guardar (por si se pulsa Intro sin salir del campo)
+form.addEventListener("submit", () => {
+  for (const ojo of ["od", "oi"]) {
+    for (const [nombre, signo] of Object.entries(DECIMALES)) {
+      const input = campo(`${ojo}_${nombre}`);
+      input.value = formatear(input.value, signo);
+    }
+    campo(`${ojo}_eje`).value = formatearEje(campo(`${ojo}_eje`).value);
+  }
+  for (const nombre of ["lc_curva_base", "lc_diametro"]) campo(nombre).value = formatear(campo(nombre).value, "");
+});
+</script>
 {% endblock %}

@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS productos (
     proveedor TEXT NOT NULL DEFAULT '',
     precio_coste INTEGER NOT NULL DEFAULT 0,
     precio_venta INTEGER NOT NULL DEFAULT 0,
-    iva INTEGER NOT NULL DEFAULT 21,
+    iva INTEGER NOT NULL DEFAULT 22,
     stock INTEGER NOT NULL DEFAULT 0,
     stock_minimo INTEGER NOT NULL DEFAULT 0,
     controla_stock INTEGER NOT NULL DEFAULT 1,
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS lineas_venta (
     cantidad INTEGER NOT NULL,
     precio_unitario INTEGER NOT NULL,
     descuento_pct INTEGER NOT NULL DEFAULT 0,
-    iva INTEGER NOT NULL DEFAULT 21,
+    iva INTEGER NOT NULL DEFAULT 22,
     importe INTEGER NOT NULL
 );
 

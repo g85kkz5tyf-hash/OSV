@@ -197,3 +197,7 @@ select.selector-estado {
 select.selector-estado:hover { border-color: var(--borde); }
 select.selector-estado option { background: #fff; color: var(--texto); font-weight: normal; }
 form.cambio-estado { margin: 0; }
+
+/* Valor copiado automáticamente del otro ojo */
+input[data-copiado="1"], .copiado-muestra { background: #eef6fc; color: var(--primario); font-style: italic; }
+.copiado-muestra { padding: 1px 6px; border-radius: 4px; }

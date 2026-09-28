@@ -22,7 +22,7 @@
       </div>
     </div>
     <div id="cliente-buscar" class="buscador" style="max-width: 520px" {% if cliente %}hidden{% endif %}>
-      <input id="buscar-cliente" placeholder="Buscar cliente por nombre, DNI o teléfono (opcional: dejar vacío para venta de mostrador)">
+      <input id="buscar-cliente" placeholder="Buscar cliente por nombre, CI o teléfono (opcional: dejar vacío para venta de mostrador)">
       <div class="resultados" id="resultados-cliente" hidden></div>
       <p class="suave" style="margin: 6px 0 0">¿Cliente nuevo? <a href="{{ url_for('clientes.nuevo') }}" target="_blank">Créalo aquí</a> y después búscalo.</p>
     </div>
@@ -36,12 +36,12 @@
     </div>
     <div class="tabla-scroll">
     <table class="lineas">
-      <thead><tr><th style="width:40%">Descripción</th><th style="width:80px">Cant.</th><th style="width:120px">Precio (€)</th><th style="width:80px">Dto. %</th><th style="width:90px">IVA</th><th class="num">Importe</th><th></th></tr></thead>
+      <thead><tr><th style="width:40%">Descripción</th><th style="width:80px">Cant.</th><th style="width:120px">Precio ($)</th><th style="width:80px">Dto. %</th><th style="width:90px">IVA</th><th class="num">Importe</th><th></th></tr></thead>
       <tbody id="lineas"></tbody>
     </table>
     </div>
     <p><button type="button" class="secundario peque" id="linea-libre">+ Línea libre (servicio, lente por encargo…)</button></p>
-    <div class="totales">Total: <span id="total">0,00 €</span></div>
+    <div class="totales">Total: <span id="total">$ 0,00</span></div>
   </div>
 
   <div class="panel">
@@ -58,7 +58,7 @@
         <input type="date" id="fecha_entrega_prevista" name="fecha_entrega_prevista" value="{{ form.fecha_entrega_prevista or '' }}">
       </div>
       <div>
-        <label for="pago">Cobrado ahora (€)</label>
+        <label for="pago">Cobrado ahora ($)</label>
         <input id="pago" name="pago" inputmode="decimal" value="{{ form.pago or '' }}" placeholder="0,00">
         <button type="button" class="secundario peque" id="cobrar-todo" style="margin-top:6px">Cobrar total</button>
       </div>
@@ -97,7 +97,7 @@
         {% for t in tipos_iva %}<option value="{{ t }}">{{ t }} %</option>{% endfor %}
       </select>
     </td>
-    <td class="num importe">0,00 €</td>
+    <td class="num importe">$ 0,00</td>
     <td><button type="button" class="peligro peque quitar" title="Quitar línea">✕</button></td>
   </tr>
 </template>
@@ -108,22 +108,24 @@
 const URL_PRODUCTOS = "{{ url_for('productos.api_buscar') }}";
 const URL_CLIENTES = "{{ url_for('clientes.api_buscar') }}";
 const URL_RECETAS = "{{ url_for('clientes.api_recetas', cliente_id=0) }}".replace("/0/", "/{id}/");
+const IVA_DEFECTO = {{ tipos_iva[0] }};
 const LINEAS_PREVIAS = {{ lineas|tojson }};
 
 const $ = (s, el = document) => el.querySelector(s);
 
 function aCentimos(texto) {
-  texto = String(texto || "").trim().replace("€", "").replace(/\s/g, "");
+  texto = String(texto || "").trim().replace("$", "").replace(/\s/g, "");
   if (!texto) return 0;
   if (texto.includes(",")) texto = texto.replace(/\./g, "").replace(",", ".");
+  else if (/^-?\d{1,3}(\.\d{3})+$/.test(texto)) texto = texto.replace(/\./g, "");  // 1.500 = mil quinientos
   const n = Number(texto);
   return isNaN(n) ? 0 : Math.round(n * 100);
 }
-function euros(c) {
+function moneda(c) {
   const signo = c < 0 ? "-" : "";
   c = Math.abs(Math.round(c));
   const e = Math.floor(c / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  return `${signo}${e},${String(c % 100).padStart(2, "0")} €`;
+  return `${signo}$ ${e},${String(c % 100).padStart(2, "0")}`;
 }
 function importeTexto(c) {
   return `${Math.floor(c / 100)},${String(c % 100).padStart(2, "0")}`;
@@ -139,10 +141,10 @@ function recalcular() {
     const precio = aCentimos($("[name=precio]", tr).value);
     const dto = parseInt($("[name=descuento]", tr).value) || 0;
     const imp = Math.round(cant * precio * (100 - dto) / 100);
-    $(".importe", tr).textContent = euros(imp);
+    $(".importe", tr).textContent = moneda(imp);
     total += imp;
   });
-  $("#total").textContent = euros(total);
+  $("#total").textContent = moneda(total);
   return total;
 }
 
@@ -167,7 +169,7 @@ function anadirLinea(datos = {}) {
 }
 
 $("#linea-libre").addEventListener("click", () => {
-  const tr = anadirLinea({ iva: 21 });
+  const tr = anadirLinea({ iva: IVA_DEFECTO });
   $("[name=descripcion]", tr).focus();
 });
 
@@ -217,7 +219,7 @@ function buscador(input, caja, url, pintar, elegir) {
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 
 buscador($("#buscar-producto"), $("#resultados-producto"), URL_PRODUCTOS,
-  p => `<strong>${esc(p.nombre)}</strong> — ${euros(p.precio)}<br><small>${esc(p.codigo)} · ${esc(p.categoria)}${p.controla_stock ? ` · Stock: ${p.stock}` : ""}</small>`,
+  p => `<strong>${esc(p.nombre)}</strong> — ${moneda(p.precio)}<br><small>${esc(p.codigo)} · ${esc(p.categoria)}${p.controla_stock ? ` · Stock: ${p.stock}` : ""}</small>`,
   p => {
     if (p.controla_stock && p.stock <= 0 && !confirm(`«${p.nombre}» no tiene stock. ¿Añadirlo igualmente?`)) return;
     anadirLinea({

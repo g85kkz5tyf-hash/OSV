@@ -88,7 +88,7 @@ def exportar():
     salida.write("﻿")  # BOM para que Excel detecte UTF-8
     w = csv.writer(salida, delimiter=";")
     w.writerow(["Código", "Categoría", "Marca", "Modelo", "Color", "Descripción", "Proveedor",
-                "Precio coste", "PVP", "IVA %", "Stock", "Stock mínimo"])
+                "Precio coste", "Precio venta", "IVA %", "Stock", "Stock mínimo"])
     for p in productos:
         w.writerow([
             p["codigo"], p["categoria"], p["marca"], p["modelo"], p["color"], p["descripcion"],
@@ -112,7 +112,7 @@ def datos_producto_formulario():
         datos["precio_coste"] = parse_importe(request.form.get("precio_coste"))
         datos["precio_venta"] = parse_importe(request.form.get("precio_venta"))
         datos["stock_minimo"] = parse_entero(request.form.get("stock_minimo"))
-        datos["iva"] = parse_entero(request.form.get("iva"), 21)
+        datos["iva"] = parse_entero(request.form.get("iva"), TIPOS_IVA[0])
     except ValueError as e:
         errores.append(str(e))
     datos["controla_stock"] = 1 if request.form.get("controla_stock") else 0
@@ -173,7 +173,7 @@ def nuevo():
         return redirect(url_for("productos.detalle", producto_id=cur.lastrowid))
     return render_template(
         "productos/form.html",
-        **contexto_form({"categoria": request.args.get("categoria", ""), "iva": 21, "controla_stock": 1}),
+        **contexto_form({"categoria": request.args.get("categoria", ""), "iva": TIPOS_IVA[0], "controla_stock": 1}),
     )
 
 

@@ -21,40 +21,40 @@
 <div class="ticket">
   <div class="centro">
     <strong style="font-size: 16px">{{ config.nombre or 'Óptica' }}</strong><br>
-    {% if config.nif %}NIF: {{ config.nif }}<br>{% endif %}
+    {% if config.nif %}RUT: {{ config.nif }}<br>{% endif %}
     {% if config.direccion %}{{ config.direccion }}<br>{% endif %}
     {% if config.telefono %}Tel. {{ config.telefono }}<br>{% endif %}
   </div>
   <hr>
-  {{ 'FACTURA SIMPLIFICADA' if venta.estado != 'Anulada' else 'VENTA ANULADA' }}<br>
+  {{ 'COMPROBANTE DE VENTA' if venta.estado != 'Anulada' else 'VENTA ANULADA' }}<br>
   Nº {{ venta.numero }}<br>
   Fecha: {{ venta.fecha|fecha }}<br>
-  {% if cliente %}Cliente: {{ cliente.nombre }} {{ cliente.apellidos }}{% if cliente.dni %}<br>DNI: {{ cliente.dni }}{% endif %}<br>{% endif %}
+  {% if cliente %}Cliente: {{ cliente.nombre }} {{ cliente.apellidos }}{% if cliente.dni %}<br>CI: {{ cliente.dni }}{% endif %}<br>{% endif %}
   <hr>
   <table>
     {% for l in lineas %}
     <tr><td colspan="2">{{ l.descripcion }}</td></tr>
     <tr>
-      <td>&nbsp;&nbsp;{{ l.cantidad }} x {{ l.precio_unitario|euros }}{% if l.descuento_pct %} -{{ l.descuento_pct }}%{% endif %}</td>
-      <td class="num">{{ l.importe|euros }}</td>
+      <td>&nbsp;&nbsp;{{ l.cantidad }} x {{ l.precio_unitario|moneda }}{% if l.descuento_pct %} -{{ l.descuento_pct }}%{% endif %}</td>
+      <td class="num">{{ l.importe|moneda }}</td>
     </tr>
     {% endfor %}
   </table>
   <hr>
   <table>
-    <tr class="total"><td>TOTAL</td><td class="num">{{ venta.total|euros }}</td></tr>
+    <tr class="total"><td>TOTAL</td><td class="num">{{ venta.total|moneda }}</td></tr>
     {% for iva, base, cuota, total in desglose %}
-    <tr><td>Base IVA {{ iva }}%</td><td class="num">{{ base|euros }}</td></tr>
-    <tr><td>Cuota IVA {{ iva }}%</td><td class="num">{{ cuota|euros }}</td></tr>
+    <tr><td>Base IVA {{ iva }}%</td><td class="num">{{ base|moneda }}</td></tr>
+    <tr><td>Cuota IVA {{ iva }}%</td><td class="num">{{ cuota|moneda }}</td></tr>
     {% endfor %}
   </table>
   <hr>
   <table>
     {% for p in pagos %}
-    <tr><td>{{ p.metodo }}{{ ' (devolución)' if p.importe < 0 }}</td><td class="num">{{ p.importe|euros }}</td></tr>
+    <tr><td>{{ p.metodo }}{{ ' (devolución)' if p.importe < 0 }}</td><td class="num">{{ p.importe|moneda }}</td></tr>
     {% endfor %}
     {% if venta.estado != 'Anulada' and venta.total > venta.pagado %}
-    <tr><td><strong>Pendiente</strong></td><td class="num"><strong>{{ (venta.total - venta.pagado)|euros }}</strong></td></tr>
+    <tr><td><strong>Pendiente</strong></td><td class="num"><strong>{{ (venta.total - venta.pagado)|moneda }}</strong></td></tr>
     {% endif %}
   </table>
   {% if venta.fecha_entrega_prevista and venta.estado != 'Entregado' and venta.estado != 'Anulada' %}

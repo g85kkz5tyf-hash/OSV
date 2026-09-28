@@ -21,8 +21,8 @@
       <label for="descripcion">Descripción</label>
       <input id="descripcion" name="descripcion" value="{{ producto.descripcion or '' }}" placeholder="p. ej. Monofocal 1.6 antirreflejante, Mensual tórica…">
     </div>
-    {{ campo('precio_coste', 'Precio de coste (€)', producto.precio_coste, extra='inputmode="decimal" placeholder="0,00"') }}
-    {{ campo('precio_venta', 'PVP con IVA (€)', producto.precio_venta, extra='inputmode="decimal" placeholder="0,00"') }}
+    {{ campo('precio_coste', 'Precio de coste ($)', producto.precio_coste, extra='inputmode="decimal" placeholder="0,00"') }}
+    {{ campo('precio_venta', 'Precio de venta con IVA ($)', producto.precio_venta, extra='inputmode="decimal" placeholder="0,00"') }}
     <div>
       <label for="iva">IVA</label>
       <select id="iva" name="iva">

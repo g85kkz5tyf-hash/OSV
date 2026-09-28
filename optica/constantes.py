@@ -8,7 +8,8 @@ CATEGORIAS = [
     "Servicio",
 ]
 
-TIPOS_IVA = [21, 10, 4, 0]
+# IVA de Uruguay: tasa básica, tasa mínima y exento
+TIPOS_IVA = [22, 10, 0]
 
 TIPOS_RECETA = [
     "Gafas lejos",
@@ -22,7 +23,7 @@ TIPOS_RECETA = [
 ESTADOS_VENTA = ["Pendiente", "En taller", "Listo para recoger", "Entregado", "Anulada"]
 ESTADOS_ABIERTOS = ["Pendiente", "En taller", "Listo para recoger"]
 
-METODOS_PAGO = ["Efectivo", "Tarjeta", "Bizum", "Transferencia", "Financiado"]
+METODOS_PAGO = ["Efectivo", "Tarjeta", "Transferencia", "Financiado"]
 
 CAMPOS_OJO = [
     ("esfera", "Esfera"),

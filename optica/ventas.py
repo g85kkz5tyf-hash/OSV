@@ -92,7 +92,7 @@ def leer_lineas_formulario(db):
             cantidad = parse_entero(cantidades[i], 1)
             precio = parse_importe(precios[i])
             descuento = parse_entero(descuentos[i], 0)
-            iva = parse_entero(ivas[i], 21)
+            iva = parse_entero(ivas[i], TIPOS_IVA[0])
         except (ValueError, IndexError) as e:
             raise ErrorVenta(f"Línea {i + 1}: {e}")
         if cantidad <= 0:
@@ -116,7 +116,7 @@ def leer_lineas_formulario(db):
                         f"No hay stock suficiente de «{descripcion}» "
                         f"(disponible: {producto['stock']}, solicitado: {necesidades[producto['id']]})."
                     )
-        if iva not in TIPOS_IVA:
+        if not producto and iva not in TIPOS_IVA:
             raise ErrorVenta(f"Línea {i + 1}: tipo de IVA no válido.")
         lineas.append({
             "producto": producto,

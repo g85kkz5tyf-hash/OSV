@@ -10,7 +10,7 @@
 <form class="filtros" method="get">
   <div class="busqueda">
     <label for="q">Buscar</label>
-    <input id="q" name="q" value="{{ q }}" placeholder="Nº de venta, cliente o DNI">
+    <input id="q" name="q" value="{{ q }}" placeholder="Nº de venta, cliente o CI">
   </div>
   <div>
     <label for="estado">Estado</label>
@@ -39,13 +39,13 @@
         <td>{{ v.fecha|fecha }}</td>
         <td>{% if v.cliente_id %}<a href="{{ url_for('clientes.ficha', cliente_id=v.cliente_id) }}">{{ v.cliente_nombre }}</a>{% else %}<span class="suave">Venta de mostrador</span>{% endif %}</td>
         <td>{{ etiqueta_estado(v.estado) }}</td>
-        <td class="num">{{ v.total|euros }}</td>
-        <td class="num {{ 'aviso' if v.estado != 'Anulada' and v.total > v.pagado }}">{{ ((v.total - v.pagado) if v.estado != 'Anulada' else 0)|euros }}</td>
+        <td class="num">{{ v.total|moneda }}</td>
+        <td class="num {{ 'aviso' if v.estado != 'Anulada' and v.total > v.pagado }}">{{ ((v.total - v.pagado) if v.estado != 'Anulada' else 0)|moneda }}</td>
       </tr>
     {% endfor %}
     </tbody>
     <tfoot>
-      <tr><th colspan="4">{{ ventas|length }} venta{{ 's' if ventas|length != 1 }} (sin contar anuladas en los totales)</th><th class="num">{{ total|euros }}</th><th class="num">{{ pendiente|euros }}</th></tr>
+      <tr><th colspan="4">{{ ventas|length }} venta{{ 's' if ventas|length != 1 }} (sin contar anuladas en los totales)</th><th class="num">{{ total|moneda }}</th><th class="num">{{ pendiente|moneda }}</th></tr>
     </tfoot>
   </table>
   </div>

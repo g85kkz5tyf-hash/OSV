@@ -27,7 +27,7 @@
 
   <dl class="datos" style="margin-bottom: 20px">
     <dt>Paciente</dt><dd>{{ cliente.nombre }} {{ cliente.apellidos }}</dd>
-    {% if cliente.dni %}<dt>DNI</dt><dd>{{ cliente.dni }}</dd>{% endif %}
+    {% if cliente.dni %}<dt>CI</dt><dd>{{ cliente.dni }}</dd>{% endif %}
     {% if cliente.fecha_nacimiento %}<dt>Fecha de nacimiento</dt><dd>{{ cliente.fecha_nacimiento|fecha }}</dd>{% endif %}
     <dt>Tipo</dt><dd>{{ receta.tipo }}</dd>
   </dl>

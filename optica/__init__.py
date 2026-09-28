@@ -5,7 +5,7 @@ from pathlib import Path
 from flask import Flask
 
 from . import db as database
-from .utils import formato_euros, formato_fecha, formato_importe
+from .utils import formato_moneda, formato_fecha, formato_importe
 
 RAIZ = Path(__file__).resolve().parent.parent
 
@@ -22,7 +22,7 @@ def create_app(config=None):
     database.init_db(app.config["DATABASE"])
     app.teardown_appcontext(database.close_db)
 
-    app.jinja_env.filters["euros"] = formato_euros
+    app.jinja_env.filters["moneda"] = formato_moneda
     app.jinja_env.filters["importe"] = formato_importe
     app.jinja_env.filters["fecha"] = formato_fecha
 

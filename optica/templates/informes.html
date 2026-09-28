@@ -14,7 +14,7 @@
 </div>
 
 <div class="panel">
-  <h2>Ventas por mes · Total año: {{ total_anio|euros }}</h2>
+  <h2>Ventas por mes · Total año: {{ total_anio|moneda }}</h2>
   <table>
     <thead><tr><th>Mes</th><th class="num">Ventas</th><th class="num">Importe</th><th style="width: 45%"></th></tr></thead>
     <tbody>
@@ -22,7 +22,7 @@
       <tr>
         <td>{{ f.nombre }}</td>
         <td class="num">{{ f.n }}</td>
-        <td class="num">{{ f.total|euros }}</td>
+        <td class="num">{{ f.total|moneda }}</td>
         <td>{% if f.total %}<div class="barra-grafico" style="width: {{ (f.total * 100 / max_mes)|round(1) }}%"></div>{% endif %}</td>
       </tr>
     {% endfor %}
@@ -36,7 +36,7 @@
     {% if categorias %}
     <table>
       <thead><tr><th>Categoría</th><th class="num">Uds.</th><th class="num">Importe</th></tr></thead>
-      <tbody>{% for c in categorias %}<tr><td>{{ c.categoria }}</td><td class="num">{{ c.unidades }}</td><td class="num">{{ c.total|euros }}</td></tr>{% endfor %}</tbody>
+      <tbody>{% for c in categorias %}<tr><td>{{ c.categoria }}</td><td class="num">{{ c.unidades }}</td><td class="num">{{ c.total|moneda }}</td></tr>{% endfor %}</tbody>
     </table>
     {% else %}<p class="vacio">Sin datos.</p>{% endif %}
   </div>
@@ -45,7 +45,7 @@
     {% if top %}
     <table>
       <thead><tr><th>Producto</th><th class="num">Uds.</th><th class="num">Importe</th></tr></thead>
-      <tbody>{% for t in top %}<tr><td>{{ t.descripcion }}</td><td class="num">{{ t.unidades }}</td><td class="num">{{ t.total|euros }}</td></tr>{% endfor %}</tbody>
+      <tbody>{% for t in top %}<tr><td>{{ t.descripcion }}</td><td class="num">{{ t.unidades }}</td><td class="num">{{ t.total|moneda }}</td></tr>{% endfor %}</tbody>
     </table>
     {% else %}<p class="vacio">Sin datos.</p>{% endif %}
   </div>

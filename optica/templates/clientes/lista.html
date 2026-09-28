@@ -9,7 +9,7 @@
 <form class="filtros" method="get">
   <div class="busqueda">
     <label for="q">Buscar</label>
-    <input id="q" name="q" value="{{ q }}" placeholder="Nombre, apellidos, DNI, teléfono o email" autofocus>
+    <input id="q" name="q" value="{{ q }}" placeholder="Nombre, apellidos, CI, teléfono o email" autofocus>
   </div>
   <button type="submit">Buscar</button>
   {% if q %}<a class="boton secundario" href="{{ url_for('clientes.lista') }}">Limpiar</a>{% endif %}
@@ -19,7 +19,7 @@
   {% if clientes %}
   <div class="tabla-scroll">
   <table>
-    <thead><tr><th>Nombre</th><th>DNI</th><th>Teléfono</th><th>Email</th><th>Localidad</th></tr></thead>
+    <thead><tr><th>Nombre</th><th>CI</th><th>Teléfono</th><th>Email</th><th>Localidad</th></tr></thead>
     <tbody>
     {% for c in clientes %}
       <tr>

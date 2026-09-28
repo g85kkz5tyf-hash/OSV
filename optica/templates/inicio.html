@@ -7,22 +7,22 @@
 <div class="tarjetas">
   <div class="tarjeta">
     <div class="etiqueta">Ventas de hoy</div>
-    <div class="valor">{{ ventas_hoy.total|euros }}</div>
+    <div class="valor">{{ ventas_hoy.total|moneda }}</div>
     <div class="detalle">{{ ventas_hoy.n }} venta{{ 's' if ventas_hoy.n != 1 }}</div>
   </div>
   <div class="tarjeta">
     <div class="etiqueta">Cobrado hoy</div>
-    <div class="valor">{{ cobrado_hoy|euros }}</div>
+    <div class="valor">{{ cobrado_hoy|moneda }}</div>
     <div class="detalle"><a href="{{ url_for('main.caja') }}">Ver caja del día</a></div>
   </div>
   <div class="tarjeta">
     <div class="etiqueta">Ventas del mes</div>
-    <div class="valor">{{ ventas_mes.total|euros }}</div>
+    <div class="valor">{{ ventas_mes.total|moneda }}</div>
     <div class="detalle">{{ ventas_mes.n }} venta{{ 's' if ventas_mes.n != 1 }}</div>
   </div>
   <div class="tarjeta">
     <div class="etiqueta">Pendiente de cobro</div>
-    <div class="valor {{ 'aviso' if pendiente_cobro > 0 }}">{{ pendiente_cobro|euros }}</div>
+    <div class="valor {{ 'aviso' if pendiente_cobro > 0 }}">{{ pendiente_cobro|moneda }}</div>
     <div class="detalle"><a href="{{ url_for('ventas.lista', estado='pendiente_cobro') }}">Ver ventas</a></div>
   </div>
 </div>
@@ -49,12 +49,12 @@
             <input type="hidden" name="volver" value="{{ request.path }}">
             <select name="estado" aria-label="Estado de la venta {{ v.numero }}"
                     class="selector-estado estado-{{ v.estado|replace(' ', '-') }}"
-                    data-actual="{{ v.estado }}" data-pendiente="{{ (v.total - v.pagado)|euros if v.total > v.pagado else '' }}">
+                    data-actual="{{ v.estado }}" data-pendiente="{{ (v.total - v.pagado)|moneda if v.total > v.pagado else '' }}">
               {% for e in estados %}<option {{ 'selected' if e == v.estado }}>{{ e }}</option>{% endfor %}
             </select>
           </form>
         </td>
-        <td class="num">{{ (v.total - v.pagado)|euros }}</td>
+        <td class="num">{{ (v.total - v.pagado)|moneda }}</td>
       </tr>
     {% endfor %}
     </tbody>

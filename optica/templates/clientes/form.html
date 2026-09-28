@@ -9,7 +9,7 @@
   <form class="campos" method="post">
     {{ campo('nombre', 'Nombre *', cliente.nombre, extra='required autofocus') }}
     {{ campo('apellidos', 'Apellidos', cliente.apellidos) }}
-    {{ campo('dni', 'DNI / NIE', cliente.dni) }}
+    {{ campo('dni', 'CI (cédula)', cliente.dni) }}
     {{ campo('fecha_nacimiento', 'Fecha de nacimiento', cliente.fecha_nacimiento, tipo='date') }}
     {{ campo('telefono', 'Teléfono', cliente.telefono, tipo='tel') }}
     {{ campo('email', 'Email', cliente.email, tipo='email') }}

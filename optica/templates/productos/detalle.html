@@ -22,11 +22,11 @@
       <dt>Color / calibre</dt><dd>{{ producto.color or '—' }}</dd>
       {% if producto.descripcion %}<dt>Descripción</dt><dd>{{ producto.descripcion }}</dd>{% endif %}
       <dt>Proveedor</dt><dd>{{ producto.proveedor or '—' }}</dd>
-      <dt>Precio de coste</dt><dd>{{ producto.precio_coste|euros }}</dd>
-      <dt>PVP (IVA {{ producto.iva }} % incl.)</dt><dd><strong>{{ producto.precio_venta|euros }}</strong></dd>
+      <dt>Precio de coste</dt><dd>{{ producto.precio_coste|moneda }}</dd>
+      <dt>Precio de venta (IVA {{ producto.iva }} % incl.)</dt><dd><strong>{{ producto.precio_venta|moneda }}</strong></dd>
       {% if producto.precio_coste and producto.precio_venta %}
         {% set base = producto.precio_venta * 100 / (100 + producto.iva) %}
-        <dt>Margen</dt><dd>{{ (base - producto.precio_coste)|round|int|euros }} ({{ ((base - producto.precio_coste) * 100 / base)|round(1) }} % sobre base)</dd>
+        <dt>Margen</dt><dd>{{ (base - producto.precio_coste)|round|int|moneda }} ({{ ((base - producto.precio_coste) * 100 / base)|round(1) }} % sobre base)</dd>
       {% endif %}
     </dl>
   </div>

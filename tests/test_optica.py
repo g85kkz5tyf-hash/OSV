@@ -2,7 +2,7 @@ import pytest
 
 from optica import create_app
 from optica.db import connect
-from optica.utils import desglose_iva, formato_euros, importe_linea, parse_importe
+from optica.utils import desglose_iva, formato_moneda, importe_linea, parse_importe
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def crear_cliente(client, **datos):
 def crear_producto(client, codigo="M001", stock="5", controla=True, **extra):
     datos = {
         "codigo": codigo, "categoria": "Montura", "marca": "Ray-Ban", "modelo": "RB5154",
-        "color": "Negro", "precio_coste": "40,00", "precio_venta": "120,00", "iva": "21",
+        "color": "Negro", "precio_coste": "40,00", "precio_venta": "120,00", "iva": "22",
         "stock": stock, "stock_minimo": "1", **extra,
     }
     if controla:
@@ -49,7 +49,7 @@ def vender(client, lineas, **extra):
         "cantidad": [l.get("cantidad", "1") for l in lineas],
         "precio": [l.get("precio", "0") for l in lineas],
         "descuento": [l.get("descuento", "0") for l in lineas],
-        "iva": [l.get("iva", "21") for l in lineas],
+        "iva": [l.get("iva", "22") for l in lineas],
         "estado": "Entregado", "metodo": "Efectivo", "pago": "",
         **extra,
     }
@@ -63,21 +63,23 @@ def test_parse_importe():
     assert parse_importe("12.5") == 1250
     assert parse_importe("1.234,56") == 123456
     assert parse_importe("") == 0
-    assert parse_importe("99 €") == 9900
+    assert parse_importe("$ 99") == 9900
+    assert parse_importe("1.500") == 150000  # separador de miles
+    assert parse_importe("1.500,50") == 150050
     with pytest.raises(ValueError):
         parse_importe("abc")
 
 
-def test_formato_euros():
-    assert formato_euros(123456) == "1.234,56 €"
-    assert formato_euros(5) == "0,05 €"
-    assert formato_euros(-1050) == "-10,50 €"
+def test_formato_moneda():
+    assert formato_moneda(123456) == "$ 1.234,56"
+    assert formato_moneda(5) == "$ 0,05"
+    assert formato_moneda(-1050) == "-$ 10,50"
 
 
 def test_importe_linea_y_desglose():
     assert importe_linea(2, 10000, 10) == 18000
-    desglose = desglose_iva([{"iva": 21, "importe": 12100}, {"iva": 10, "importe": 11000}])
-    assert desglose == [(10, 10000, 1000, 11000), (21, 10000, 2100, 12100)]
+    desglose = desglose_iva([{"iva": 22, "importe": 12200}, {"iva": 10, "importe": 11000}])
+    assert desglose == [(10, 10000, 1000, 11000), (22, 10000, 2200, 12200)]
 
 
 # --- Páginas ----------------------------------------------------------------
@@ -109,7 +111,7 @@ def test_ficha_cliente_con_receta_y_compras(client):
     assert "Ana García López" in ficha
     assert "-1,75" in ficha and "Gafas progresivas" in ficha
     assert "Ray-Ban RB5154" in ficha  # historial de compras
-    assert "120,00 €" in ficha
+    assert "$ 120,00" in ficha
 
     impresa = client.get(f"/clientes/{cid}/recetas/1")
     assert impresa.status_code == 200 and "-2,00" in impresa.get_data(as_text=True)
@@ -177,10 +179,10 @@ def test_venta_descuenta_stock_y_registra_pago(client, db):
     assert db.execute("SELECT SUM(importe) FROM pagos").fetchone()[0] == 10000
     # la línea de producto toma el IVA del producto aunque el formulario diga otro
     ivas = [r[0] for r in db.execute("SELECT iva FROM lineas_venta ORDER BY id")]
-    assert ivas == [21, 10]
+    assert ivas == [22, 10]
 
     detalle = client.get(f"/ventas/{venta['id']}").get_data(as_text=True)
-    assert "416,00 €" in detalle  # pendiente
+    assert "$ 416,00" in detalle  # pendiente
     assert client.get(f"/ventas/{venta['id']}/ticket").status_code == 200
 
     # cobrar el resto
@@ -244,9 +246,10 @@ def test_numeracion_correlativa(client, db):
 
 def test_caja_por_metodo(client):
     vender(client, [{"descripcion": "A", "precio": "10"}], pago="10", metodo="Efectivo")
-    vender(client, [{"descripcion": "B", "precio": "25,50"}], pago="25,50", metodo="Bizum")
+    vender(client, [{"descripcion": "B", "precio": "25,50"}], pago="25,50", metodo="Transferencia")
     html = client.get("/caja").get_data(as_text=True)
-    assert "35,50 €" in html and "25,50 €" in html
+    assert "$ 35,50" in html and "$ 25,50" in html
+    assert "Bizum" not in html
 
 
 def test_configuracion_y_copia(client):
@@ -279,3 +282,14 @@ def test_cambio_rapido_de_estado_validaciones(client, db):
     # no redirige a webs externas
     r = client.post("/ventas/1/cambiar-estado", data={"estado": "En taller", "volver": "//malo.com"})
     assert r.headers["Location"] == "/"
+
+
+def test_migracion_iva_21_a_22(tmp_path):
+    ruta = str(tmp_path / "vieja.db")
+    create_app({"DATABASE": ruta})
+    conn = connect(ruta)
+    conn.execute("INSERT INTO productos (codigo, categoria, iva) VALUES ('A', 'Montura', 21)")
+    conn.commit()
+    create_app({"DATABASE": ruta})  # al volver a abrir el programa
+    assert conn.execute("SELECT iva FROM productos").fetchone()[0] == 22
+    conn.close()

@@ -38,15 +38,15 @@
 <div class="tarjetas">
   <div class="tarjeta"><div class="etiqueta">Referencias</div><div class="valor">{{ productos|length }}</div></div>
   <div class="tarjeta"><div class="etiqueta">Unidades en stock</div><div class="valor">{{ unidades }}</div></div>
-  <div class="tarjeta"><div class="etiqueta">Valor a coste</div><div class="valor">{{ valor_coste|euros }}</div></div>
-  <div class="tarjeta"><div class="etiqueta">Valor a PVP</div><div class="valor">{{ valor_venta|euros }}</div></div>
+  <div class="tarjeta"><div class="etiqueta">Valor a coste</div><div class="valor">{{ valor_coste|moneda }}</div></div>
+  <div class="tarjeta"><div class="etiqueta">Valor a precio de venta</div><div class="valor">{{ valor_venta|moneda }}</div></div>
 </div>
 
 <div class="panel">
   {% if productos %}
   <div class="tabla-scroll">
   <table>
-    <thead><tr><th>Código</th><th>Categoría</th><th>Marca / modelo</th><th>Color</th><th class="num">Coste</th><th class="num">PVP</th><th class="num">Stock</th></tr></thead>
+    <thead><tr><th>Código</th><th>Categoría</th><th>Marca / modelo</th><th>Color</th><th class="num">Coste</th><th class="num">Precio</th><th class="num">Stock</th></tr></thead>
     <tbody>
     {% for p in productos %}
       <tr>
@@ -54,8 +54,8 @@
         <td>{{ p.categoria }}</td>
         <td><a href="{{ url_for('productos.detalle', producto_id=p.id) }}">{{ p.marca }} {{ p.modelo }}</a>{% if p.descripcion %}<br><small class="suave">{{ p.descripcion }}</small>{% endif %}{% if not p.activo %} <span class="etiqueta-estado estado-Anulada">Baja</span>{% endif %}</td>
         <td>{{ p.color }}</td>
-        <td class="num">{{ p.precio_coste|euros }}</td>
-        <td class="num">{{ p.precio_venta|euros }}</td>
+        <td class="num">{{ p.precio_coste|moneda }}</td>
+        <td class="num">{{ p.precio_venta|moneda }}</td>
         <td class="num">
           {% if p.controla_stock %}
             <span class="{{ 'alerta' if p.stock <= 0 else ('aviso' if p.stock <= p.stock_minimo) }}">{{ p.stock }}</span>
