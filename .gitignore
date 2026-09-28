@@ -3,3 +3,4 @@ __pycache__/
 .venv/
 datos/
 .pytest_cache/
+GestionOptica.zip
