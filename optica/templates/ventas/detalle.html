@@ -30,7 +30,7 @@
   <h2>Artículos</h2>
   <div class="tabla-scroll">
   <table>
-    <thead><tr><th>Descripción</th><th class="num">Cant.</th><th class="num">Precio</th><th class="num">Dto.</th><th class="num">IVA</th><th class="num">Importe</th></tr></thead>
+    <thead><tr><th>Descripción</th><th class="num">Cant.</th><th class="num">Precio</th><th class="num">Dto.</th><th class="num">Importe</th></tr></thead>
     <tbody>
     {% for l in lineas %}
       <tr>
@@ -53,16 +53,12 @@
         <td class="num">{{ l.cantidad }}</td>
         <td class="num">{{ l.precio_unitario|moneda }}</td>
         <td class="num">{{ l.descuento_pct ~ ' %' if l.descuento_pct else '' }}</td>
-        <td class="num">{{ l.iva }} %</td>
         <td class="num">{{ l.importe|moneda }}</td>
       </tr>
     {% endfor %}
     </tbody>
     <tfoot>
-      {% for iva, base, cuota, total in desglose %}
-      <tr><td colspan="5" class="num suave">Base {{ iva }} %: {{ base|moneda }} · Cuota IVA: {{ cuota|moneda }}</td><td class="num">{{ total|moneda }}</td></tr>
-      {% endfor %}
-      <tr><th colspan="5" class="num">Total</th><th class="num">{{ venta.total|moneda }}</th></tr>
+      <tr><th colspan="4" class="num">Total</th><th class="num">{{ venta.total|moneda }}</th></tr>
     </tfoot>
   </table>
   </div>

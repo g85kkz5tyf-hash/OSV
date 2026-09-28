@@ -28,10 +28,10 @@
       {% if producto.descripcion %}<dt>Descripción</dt><dd>{{ producto.descripcion }}</dd>{% endif %}
       <dt>Proveedor</dt><dd>{{ producto.proveedor or '—' }}</dd>
       <dt>Precio de coste</dt><dd>{{ producto.precio_coste|moneda }}</dd>
-      <dt>Precio de venta (IVA {{ producto.iva }} % incl.)</dt><dd><strong>{{ producto.precio_venta|moneda }}</strong></dd>
+      <dt>Precio de venta</dt><dd><strong>{{ producto.precio_venta|moneda }}</strong></dd>
       {% if producto.precio_coste and producto.precio_venta %}
-        {% set base = producto.precio_venta * 100 / (100 + producto.iva) %}
-        <dt>Margen</dt><dd>{{ (base - producto.precio_coste)|round|int|moneda }} ({{ ((base - producto.precio_coste) * 100 / base)|round(1) }} % sobre base)</dd>
+        {% set margen = producto.precio_venta - producto.precio_coste %}
+        <dt>Margen</dt><dd>{{ margen|moneda }} ({{ (margen * 100 / producto.precio_venta)|round(1) }} % del precio de venta)</dd>
       {% endif %}
     </dl>
   </div>

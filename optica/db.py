@@ -29,8 +29,9 @@ def init_db(path):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     conn = connect(path)
     conn.executescript(SCHEMA.read_text(encoding="utf-8"))
-    # Adaptación a Uruguay: el antiguo 21 % pasa a la tasa básica del 22 %
-    conn.execute("UPDATE productos SET iva = 22 WHERE iva = 21")
+    # «Gafas» pasó a llamarse «Lentes»
+    conn.execute("UPDATE recetas SET tipo = 'Lentes' || substr(tipo, 6) WHERE tipo LIKE 'Gafas %'")
+    conn.execute("UPDATE productos SET categoria = 'Lentes de sol' WHERE categoria = 'Gafa de sol'")
     # «Montura» pasó a llamarse «Armazón», con sus medidas
     conn.execute("UPDATE productos SET categoria = 'Armazón' WHERE categoria = 'Montura'")
     nuevas_columnas = {
@@ -49,7 +50,7 @@ def init_db(path):
     # Producto «Armazón propio» (costo y precio 0, sin control de stock)
     conn.execute(
         "INSERT OR IGNORE INTO productos (codigo, categoria, descripcion, precio_coste, precio_venta,"
-        " iva, controla_stock) VALUES ('ARMAZON-PROPIO', 'Armazón', 'Armazón propio', 0, 0, 22, 0)"
+        " controla_stock) VALUES ('ARMAZON-PROPIO', 'Armazón', 'Armazón propio', 0, 0, 0)"
     )
     conn.commit()
     conn.close()

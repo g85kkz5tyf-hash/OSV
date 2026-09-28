@@ -43,10 +43,6 @@
   <hr>
   <table>
     <tr class="total"><td>TOTAL</td><td class="num">{{ venta.total|moneda }}</td></tr>
-    {% for iva, base, cuota, total in desglose %}
-    <tr><td>Base IVA {{ iva }}%</td><td class="num">{{ base|moneda }}</td></tr>
-    <tr><td>Cuota IVA {{ iva }}%</td><td class="num">{{ cuota|moneda }}</td></tr>
-    {% endfor %}
   </table>
   <hr>
   <table>

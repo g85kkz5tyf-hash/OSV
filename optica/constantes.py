@@ -3,7 +3,7 @@ CATEGORIA_LENTE = "Lente oftálmica"
 
 CATEGORIAS = [
     CATEGORIA_ARMAZON,
-    "Gafa de sol",
+    "Lentes de sol",
     CATEGORIA_LENTE,
     "Lente de contacto",
     "Líquido / mantenimiento",
@@ -11,15 +11,12 @@ CATEGORIAS = [
     "Servicio",
 ]
 
-# IVA de Uruguay: tasa básica, tasa mínima y exento
-TIPOS_IVA = [22, 10, 0]
-
 TIPOS_RECETA = [
-    "Gafas lejos",
-    "Gafas cerca",
-    "Gafas progresivas",
-    "Gafas bifocales",
-    "Gafas ocupacionales",
+    "Lentes lejos",
+    "Lentes cerca",
+    "Lentes progresivas",
+    "Lentes bifocales",
+    "Lentes ocupacionales",
     "Lentes de contacto",
 ]
 

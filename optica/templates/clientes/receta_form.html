@@ -60,7 +60,7 @@
 
   <input type="hidden" name="generar_cerca" id="generar_cerca" value="">
   <div class="mensaje ok" id="aviso-cerca" hidden>
-    Al guardar se creará también una <strong>receta para gafas de cerca</strong> con la adición sumada a la esfera.
+    Al guardar se creará también una <strong>receta para lentes de cerca</strong> con la adición sumada a la esfera.
     <button type="button" class="secundario peque" id="no-cerca">No crearla</button>
   </div>
 
@@ -142,12 +142,12 @@ for (const nombre of ["lc_curva_base", "lc_diametro"]) {
 
 // Al escribir la adición, ofrecer crear también la receta de cerca (una sola vez)
 let preguntadoCerca = false;
-// Solo para recetas de «Gafas lejos»
+// Solo para recetas de «Lentes lejos»
 function ofrecerRecetaCerca() {
-  if (campo("tipo").value !== "Gafas lejos") return;
+  if (campo("tipo").value !== "Lentes lejos") return;
   if (preguntadoCerca || !(campo("od_adicion").value.trim() || campo("oi_adicion").value.trim())) return;
   preguntadoCerca = true;
-  if (confirm("¿Quieres generar también una nueva receta para gafas de cerca?\n\n" +
+  if (confirm("¿Quieres generar también una nueva receta para lentes de cerca?\n\n" +
               "Será igual a esta, pero con la adición sumada a la esfera de cada ojo.")) {
     document.getElementById("generar_cerca").value = "1";
     document.getElementById("aviso-cerca").hidden = false;
@@ -159,9 +159,9 @@ function cancelarRecetaCerca() {
   document.getElementById("aviso-cerca").hidden = true;
 }
 document.getElementById("no-cerca").addEventListener("click", cancelarRecetaCerca);
-// Si se cambia el tipo a otro distinto de «Gafas lejos», no se crea la de cerca
+// Si se cambia el tipo a otro distinto de «Lentes lejos», no se crea la de cerca
 campo("tipo").addEventListener("change", () => {
-  if (campo("tipo").value !== "Gafas lejos") cancelarRecetaCerca();
+  if (campo("tipo").value !== "Lentes lejos") cancelarRecetaCerca();
   else { preguntadoCerca = false; ofrecerRecetaCerca(); }
 });
 

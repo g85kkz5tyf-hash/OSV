@@ -257,11 +257,11 @@ def formato_dioptrias(valor):
     return "-" + texto if valor < 0 else texto
 
 
-TIPO_LEJOS, TIPO_CERCA = "Gafas lejos", "Gafas cerca"
+TIPO_LEJOS, TIPO_CERCA = "Lentes lejos", "Lentes cerca"
 
 
 def receta_de_cerca(datos):
-    """Copia de la receta para gafas de cerca: esfera + adición en cada ojo y sin adición.
+    """Copia de la receta para lentes de cerca: esfera + adición en cada ojo y sin adición.
 
     Devuelve (datos, ojos_sin_calcular).
     """
@@ -291,7 +291,7 @@ def guardar_receta_de_cerca(db, cliente_id, datos):
         f"INSERT INTO recetas (cliente_id, {', '.join(columnas)}) VALUES (?, {', '.join('?' * len(columnas))})",
         [cliente_id, *cerca.values()],
     )
-    mensaje = " También se creó la receta para gafas de cerca (esfera + adición)."
+    mensaje = " También se creó la receta para lentes de cerca (esfera + adición)."
     if sin_calcular:
         mensaje += f" Revisa la esfera de {' y '.join(sin_calcular)}: no se pudo sumar la adición."
     return mensaje

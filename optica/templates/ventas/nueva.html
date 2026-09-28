@@ -35,7 +35,7 @@
     </div>
     <div class="tabla-scroll">
     <table class="lineas">
-      <thead><tr><th style="width:40%">Descripción</th><th style="width:80px">Cant.</th><th style="width:120px">Precio ($)</th><th style="width:80px">Dto. %</th><th style="width:90px">IVA</th><th class="num">Importe</th><th></th></tr></thead>
+      <thead><tr><th style="width:40%">Descripción</th><th style="width:80px">Cant.</th><th style="width:120px">Precio ($)</th><th style="width:80px">Dto. %</th><th class="num">Importe</th><th></th></tr></thead>
       <tbody id="lineas"></tbody>
     </table>
     </div>
@@ -99,11 +99,6 @@
     <td><input name="cantidad" type="number" min="1" step="1" value="1" required></td>
     <td><input name="precio" inputmode="decimal" required></td>
     <td><input name="descuento" type="number" min="0" max="100" step="1" value="0"></td>
-    <td>
-      <select name="iva">
-        {% for t in tipos_iva %}<option value="{{ t }}">{{ t }} %</option>{% endfor %}
-      </select>
-    </td>
     <td class="num importe">$ 0,00</td>
     <td><button type="button" class="peligro peque quitar" title="Quitar línea">✕</button></td>
   </tr>
@@ -119,7 +114,6 @@ const PRECIO_RANURADO = {{ precio_ranurado }};
 let RECETAS = {{ recetas|tojson }};
 const RECETAS_ELEGIDAS = {{ recetas_elegidas|tojson }};
 const CATEGORIA_LENTE = {{ categoria_lente|tojson }};
-const IVA_DEFECTO = {{ tipos_iva[0] }};
 const LINEAS_PREVIAS = {{ lineas|tojson }};
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -169,12 +163,7 @@ function anadirLinea(datos = {}) {
   if (datos.cantidad) $("[name=cantidad]", tr).value = datos.cantidad;
   $("[name=precio]", tr).value = datos.precio || "";
   if (datos.descuento) $("[name=descuento]", tr).value = datos.descuento;
-  if (datos.iva !== undefined && datos.iva !== "") $("[name=iva]", tr).value = String(datos.iva);
-  if (datos.producto_id) {
-    $("[name=iva]", tr).disabled = true;  // el IVA lo fija el producto
-    $("[name=iva]", tr).insertAdjacentHTML("afterend", `<input type="hidden" name="iva" value="${datos.iva}">`);
-    $(".info", tr).textContent = datos.info || "";
-  }
+  if (datos.producto_id) $(".info", tr).textContent = datos.info || "";
   if (datos.categoria === CATEGORIA_LENTE) {
     // Lente oftálmica: si la venta tiene varias recetas, se elige a cuál corresponde
     tr.dataset.lente = "1";
@@ -205,7 +194,7 @@ function anadirLinea(datos = {}) {
 }
 
 $("#linea-libre").addEventListener("click", () => {
-  const tr = anadirLinea({ iva: IVA_DEFECTO });
+  const tr = anadirLinea({});
   $("[name=descripcion]", tr).focus();
 });
 
@@ -256,7 +245,7 @@ buscador($("#buscar-producto"), $("#resultados-producto"), URL_PRODUCTOS,
   p => {
     if (p.controla_stock && p.stock <= 0 && !confirm(`«${p.nombre}» no tiene stock. ¿Añadirlo igualmente?`)) return;
     const tr = anadirLinea({
-      producto_id: p.id, descripcion: p.nombre, precio: importeTexto(p.precio), iva: p.iva,
+      producto_id: p.id, descripcion: p.nombre, precio: importeTexto(p.precio),
       info: `${p.codigo}${p.controla_stock ? ` · Stock: ${p.stock}` : ""}`,
       armazon_propio: p.armazon_propio, categoria: p.categoria,
     });

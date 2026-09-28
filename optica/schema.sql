@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS recetas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     cliente_id INTEGER NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
     fecha TEXT NOT NULL,
-    tipo TEXT NOT NULL DEFAULT 'Gafas lejos',
+    tipo TEXT NOT NULL DEFAULT 'Lentes lejos',
     optometrista TEXT NOT NULL DEFAULT '',
     -- Ojo derecho
     od_esfera TEXT NOT NULL DEFAULT '',
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS productos (
     proveedor TEXT NOT NULL DEFAULT '',
     precio_coste INTEGER NOT NULL DEFAULT 0,
     precio_venta INTEGER NOT NULL DEFAULT 0,
-    iva INTEGER NOT NULL DEFAULT 22,
+    iva INTEGER NOT NULL DEFAULT 0, -- sin uso
     stock INTEGER NOT NULL DEFAULT 0,
     stock_minimo INTEGER NOT NULL DEFAULT 0,
     controla_stock INTEGER NOT NULL DEFAULT 1,
@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS lineas_venta (
     cantidad INTEGER NOT NULL,
     precio_unitario INTEGER NOT NULL,
     descuento_pct INTEGER NOT NULL DEFAULT 0,
-    iva INTEGER NOT NULL DEFAULT 22,
+    iva INTEGER NOT NULL DEFAULT 0, -- sin uso
     importe INTEGER NOT NULL,
     -- Medidas del armazón que trae el cliente (solo en la línea «Armazón propio»)
     calibre TEXT NOT NULL DEFAULT '',

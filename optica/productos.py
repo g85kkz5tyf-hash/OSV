@@ -3,7 +3,7 @@ import io
 
 from flask import Blueprint, Response, abort, flash, jsonify, redirect, render_template, request, url_for
 
-from .constantes import CODIGO_ARMAZON_PROPIO, CATEGORIA_ARMAZON, CATEGORIAS, MEDIDAS_ARMAZON, TIPOS_IVA
+from .constantes import CODIGO_ARMAZON_PROPIO, CATEGORIA_ARMAZON, CATEGORIAS, MEDIDAS_ARMAZON
 from .db import get_db
 from .utils import formato_importe, parse_entero, parse_importe
 
@@ -89,12 +89,12 @@ def exportar():
     salida.write("﻿")  # BOM para que Excel detecte UTF-8
     w = csv.writer(salida, delimiter=";")
     w.writerow(["Código", "Categoría", "Marca", "Modelo", "Color", "Descripción", "Proveedor",
-                "Precio coste", "Precio venta", "IVA %", "Stock", "Stock mínimo"])
+                "Precio coste", "Precio venta", "Stock", "Stock mínimo"])
     for p in productos:
         w.writerow([
             p["codigo"], p["categoria"], p["marca"], p["modelo"], p["color"], p["descripcion"],
             p["proveedor"], formato_importe(p["precio_coste"]), formato_importe(p["precio_venta"]),
-            p["iva"], p["stock"] if p["controla_stock"] else "", p["stock_minimo"],
+            p["stock"] if p["controla_stock"] else "", p["stock_minimo"],
         ])
     return Response(
         salida.getvalue(), mimetype="text/csv",
@@ -117,7 +117,6 @@ def datos_producto_formulario():
         datos["precio_coste"] = parse_importe(request.form.get("precio_coste"))
         datos["precio_venta"] = parse_importe(request.form.get("precio_venta"))
         datos["stock_minimo"] = parse_entero(request.form.get("stock_minimo"))
-        datos["iva"] = parse_entero(request.form.get("iva"), TIPOS_IVA[0])
     except ValueError as e:
         errores.append(str(e))
     datos["controla_stock"] = 1 if request.form.get("controla_stock") else 0
@@ -137,7 +136,7 @@ def contexto_form(producto):
     for campo in ("precio_coste", "precio_venta"):
         if isinstance(form.get(campo), int):
             form[campo] = formato_importe(form[campo])
-    return {"producto": form, "categorias": CATEGORIAS, "tipos_iva": TIPOS_IVA,
+    return {"producto": form, "categorias": CATEGORIAS,
             "medidas": MEDIDAS_ARMAZON, "armazon": CATEGORIA_ARMAZON}
 
 
@@ -179,7 +178,7 @@ def nuevo():
         return redirect(url_for("productos.detalle", producto_id=cur.lastrowid))
     return render_template(
         "productos/form.html",
-        **contexto_form({"categoria": request.args.get("categoria", ""), "iva": TIPOS_IVA[0], "controla_stock": 1}),
+        **contexto_form({"categoria": request.args.get("categoria", ""), "controla_stock": 1}),
     )
 
 
@@ -273,7 +272,7 @@ def api_buscar():
     return jsonify([
         {
             "id": p["id"], "codigo": p["codigo"], "categoria": p["categoria"],
-            "nombre": nombre_producto(p), "precio": p["precio_venta"], "iva": p["iva"],
+            "nombre": nombre_producto(p), "precio": p["precio_venta"],
             "stock": p["stock"], "controla_stock": bool(p["controla_stock"]),
             "armazon_propio": p["codigo"] == CODIGO_ARMAZON_PROPIO,
         }

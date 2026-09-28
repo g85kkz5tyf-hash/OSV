@@ -2,10 +2,10 @@ from datetime import date
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
-from .constantes import CATEGORIA_LENTE, PRECIO_RANURADO, CODIGO_ARMAZON_PROPIO, COLORES_EJECUCION, LABORATORIOS, TALLER_PROPIO, CAMPOS_OJO, CATEGORIA_ARMAZON, MEDIDAS_ARMAZON, ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO, TIPOS_IVA
+from .constantes import CATEGORIA_LENTE, PRECIO_RANURADO, CODIGO_ARMAZON_PROPIO, COLORES_EJECUCION, LABORATORIOS, TALLER_PROPIO, CAMPOS_OJO, CATEGORIA_ARMAZON, MEDIDAS_ARMAZON, ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO
 from .db import get_config, get_db
 from .productos import nombre_producto, registrar_movimiento
-from .utils import desglose_iva, importe_linea, parse_entero, parse_importe
+from .utils import importe_linea, parse_entero, parse_importe
 
 bp = Blueprint("ventas", __name__, url_prefix="/ventas")
 
@@ -162,7 +162,6 @@ def leer_lineas_formulario(db, receta_ids=()):
     cantidades = f.getlist("cantidad")
     precios = f.getlist("precio")
     descuentos = f.getlist("descuento")
-    ivas = f.getlist("iva")
     # Medidas del armazón propio: cada línea envía sus cuatro campos (vacíos si no aplica)
     medidas = {campo: f.getlist(f"medida_{campo}") for campo in CAMPOS_ARMAZON_PROPIO}
     lineas = []
@@ -176,7 +175,6 @@ def leer_lineas_formulario(db, receta_ids=()):
             cantidad = parse_entero(cantidades[i], 1)
             precio = parse_importe(precios[i])
             descuento = parse_entero(descuentos[i], 0)
-            iva = parse_entero(ivas[i], TIPOS_IVA[0])
         except (ValueError, IndexError) as e:
             raise ErrorVenta(f"Línea {i + 1}: {e}")
         if cantidad <= 0:
@@ -190,7 +188,6 @@ def leer_lineas_formulario(db, receta_ids=()):
             producto = db.execute("SELECT * FROM productos WHERE id = ?", (producto_id,)).fetchone()
             if producto is None:
                 raise ErrorVenta(f"Línea {i + 1}: el producto no existe.")
-            iva = producto["iva"]
             if not descripcion:
                 descripcion = nombre_producto(producto)
             if producto["controla_stock"]:
@@ -200,8 +197,6 @@ def leer_lineas_formulario(db, receta_ids=()):
                         f"No hay stock suficiente de «{descripcion}» "
                         f"(disponible: {producto['stock']}, solicitado: {necesidades[producto['id']]})."
                     )
-        if not producto and iva not in TIPOS_IVA:
-            raise ErrorVenta(f"Línea {i + 1}: tipo de IVA no válido.")
         receta_linea = None
         if producto is not None and producto["categoria"] == CATEGORIA_LENTE and receta_ids:
             if len(receta_ids) == 1:
@@ -217,7 +212,6 @@ def leer_lineas_formulario(db, receta_ids=()):
             "cantidad": cantidad,
             "precio_unitario": precio,
             "descuento_pct": descuento,
-            "iva": iva,
             "importe": importe_linea(cantidad, precio, descuento),
             "receta_id": receta_linea,
             **{campo: (valores[i].strip() if i < len(valores) and es_armazon_propio(producto) else "")
@@ -248,9 +242,9 @@ def crear_venta(db, cliente_id, receta_ids, lineas, estado, entrega_prevista, no
         db.execute(
             "INSERT INTO lineas_venta (venta_id, producto_id, descripcion, cantidad, precio_unitario,"
             " descuento_pct, iva, importe, calibre, puente, diagonal, altura, ranurado, receta_id)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)",
             (venta_id, producto["id"] if producto else None, l["descripcion"], l["cantidad"],
-             l["precio_unitario"], l["descuento_pct"], l["iva"], l["importe"],
+             l["precio_unitario"], l["descuento_pct"], l["importe"],
              l["calibre"], l["puente"], l["diagonal"], l["altura"], l["ranurado"], l["receta_id"]),
         )
         if producto and producto["controla_stock"]:
@@ -333,7 +327,6 @@ def contexto_nueva(form):
                 "cantidad": form.getlist("cantidad")[i],
                 "precio": form.getlist("precio")[i],
                 "descuento": form.getlist("descuento")[i],
-                "iva": form.getlist("iva")[i],
             })
     if form:
         recetas_elegidas = [r for r in form.getlist("receta_id") if r]
@@ -344,7 +337,7 @@ def contexto_nueva(form):
         "recetas": [{"id": r["id"], "fecha": r["fecha"], "tipo": r["tipo"]} for r in recetas],
         "recetas_elegidas": recetas_elegidas, "categoria_lente": CATEGORIA_LENTE,
         "estados": [e for e in ESTADOS_VENTA if e != "Anulada"], "metodos": METODOS_PAGO,
-        "tipos_iva": TIPOS_IVA, **contexto_ejecucion(), "medidas": MEDIDAS_ARMAZON,
+        **contexto_ejecucion(), "medidas": MEDIDAS_ARMAZON,
         "precio_ranurado": PRECIO_RANURADO,
         "cobros": list(zip(form.getlist("pago"), form.getlist("metodo"))) if form else [("", METODOS_PAGO[0])],
     }
@@ -367,7 +360,7 @@ def detalle(venta_id):
     return render_template(
         "ventas/detalle.html", venta=venta, lineas=lineas, pagos=pagos, cliente=cliente,
         recetas=recetas, estados=[e for e in ESTADOS_VENTA if e != "Anulada"], metodos=METODOS_PAGO,
-        desglose=desglose_iva(lineas), campos_ojo=CAMPOS_OJO, **contexto_ejecucion(),
+        campos_ojo=CAMPOS_OJO, **contexto_ejecucion(),
         trabajos=trabajos_por_receta(db, [venta_id]).get(venta_id, []),
         medidas=MEDIDAS_ARMAZON, precio_ranurado=PRECIO_RANURADO,
     )
@@ -384,7 +377,7 @@ def ticket(venta_id):
         cliente = db.execute("SELECT * FROM clientes WHERE id = ?", (venta["cliente_id"],)).fetchone()
     return render_template(
         "ventas/ticket.html", venta=venta, lineas=lineas, pagos=pagos, cliente=cliente,
-        desglose=desglose_iva(lineas), config=get_config(db),
+        config=get_config(db),
     )
 
 

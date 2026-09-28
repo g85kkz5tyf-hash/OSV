@@ -30,13 +30,7 @@
       <input id="descripcion" name="descripcion" value="{{ producto.descripcion or '' }}" placeholder="p. ej. Monofocal 1.6 antirreflejante, Mensual tórica…">
     </div>
     {{ campo('precio_coste', 'Precio de coste ($)', producto.precio_coste, extra='inputmode="decimal" placeholder="0,00"') }}
-    {{ campo('precio_venta', 'Precio de venta con IVA ($)', producto.precio_venta, extra='inputmode="decimal" placeholder="0,00"') }}
-    <div>
-      <label for="iva">IVA</label>
-      <select id="iva" name="iva">
-        {% for t in tipos_iva %}<option value="{{ t }}" {{ 'selected' if producto.iva == t }}>{{ t }} %</option>{% endfor %}
-      </select>
-    </div>
+    {{ campo('precio_venta', 'Precio de venta ($)', producto.precio_venta, extra='inputmode="decimal" placeholder="0,00"') }}
     <div class="ancho">
       <label class="check"><input type="checkbox" id="controla_stock" name="controla_stock" value="1" {{ 'checked' if producto.controla_stock }}> Controlar stock de este producto</label>
       <p class="suave" style="margin:4px 0 0">Desmárcalo para artículos que se piden por encargo (p. ej. lentes graduadas a medida) o servicios.</p>

@@ -51,18 +51,6 @@ def importe_linea(cantidad, precio_unitario, descuento_pct):
     return int(neto.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
-def desglose_iva(lineas):
-    """Agrupa importes (IVA incluido) por tipo de IVA: [(iva, base, cuota, total)]."""
-    totales = {}
-    for linea in lineas:
-        totales[linea["iva"]] = totales.get(linea["iva"], 0) + linea["importe"]
-    resultado = []
-    for iva, total in sorted(totales.items()):
-        base = int((Decimal(total) * 100 / (100 + iva)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
-        resultado.append((iva, base, total - base, total))
-    return resultado
-
-
 def formato_fecha(texto):
     """'2026-09-28' o '2026-09-28 10:30:00' -> '28/09/2026' (con hora si la hay)."""
     if not texto:

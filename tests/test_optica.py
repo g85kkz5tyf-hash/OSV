@@ -2,7 +2,7 @@ import pytest
 
 from optica import create_app
 from optica.db import connect
-from optica.utils import desglose_iva, formato_moneda, importe_linea, parse_importe
+from optica.utils import formato_moneda, importe_linea, parse_importe
 
 
 @pytest.fixture
@@ -76,10 +76,8 @@ def test_formato_moneda():
     assert formato_moneda(-1050) == "-$ 10,50"
 
 
-def test_importe_linea_y_desglose():
+def test_importe_linea():
     assert importe_linea(2, 10000, 10) == 18000
-    desglose = desglose_iva([{"iva": 22, "importe": 12200}, {"iva": 10, "importe": 11000}])
-    assert desglose == [(10, 10000, 1000, 11000), (22, 10000, 2200, 12200)]
 
 
 # --- Páginas ----------------------------------------------------------------
@@ -97,7 +95,7 @@ def test_paginas_cargan(client, url):
 def test_ficha_cliente_con_receta_y_compras(client):
     cid = crear_cliente(client)
     r = client.post(f"/clientes/{cid}/recetas/nueva", data={
-        "fecha": "2026-09-01", "tipo": "Gafas progresivas", "optometrista": "Laura",
+        "fecha": "2026-09-01", "tipo": "Lentes progresivas", "optometrista": "Laura",
         "od_esfera": "-1,75", "od_cilindro": "-0,50", "od_eje": "90", "od_adicion": "+2,00",
         "oi_esfera": "-2,00", "oi_cilindro": "-0,75", "oi_eje": "85", "oi_adicion": "+2,00",
         "proxima_revision": "2027-09-01",
@@ -109,7 +107,7 @@ def test_ficha_cliente_con_receta_y_compras(client):
 
     ficha = client.get(f"/clientes/{cid}").get_data(as_text=True)
     assert "Ana García López" in ficha
-    assert "-1,75" in ficha and "Gafas progresivas" in ficha
+    assert "-1,75" in ficha and "Lentes progresivas" in ficha
     assert "Ray-Ban RB5154" in ficha  # historial de compras
     assert "$ 120,00" in ficha
 
@@ -177,9 +175,6 @@ def test_venta_descuenta_stock_y_registra_pago(client, db):
     assert venta["estado"] == "En taller"
     assert db.execute("SELECT stock FROM productos WHERE id=?", (pid,)).fetchone()[0] == 3
     assert db.execute("SELECT SUM(importe) FROM pagos").fetchone()[0] == 10000
-    # la línea de producto toma el IVA del producto aunque el formulario diga otro
-    ivas = [r[0] for r in db.execute("SELECT iva FROM lineas_venta ORDER BY id")]
-    assert ivas == [22, 10]
 
     detalle = client.get(f"/ventas/{venta['id']}").get_data(as_text=True)
     assert "$ 416,00" in detalle  # pendiente
@@ -219,7 +214,7 @@ def test_receta_de_otro_cliente_rechazada(client, db):
     c1 = crear_cliente(client)
     c2 = crear_cliente(client, nombre="Luis")
     client.post(f"/clientes/{c1}/recetas/nueva", data={"fecha": "2026-01-01"})
-    r = vender(client, [{"descripcion": "Gafas", "precio": "10"}], cliente_id=str(c2), receta_id="1")
+    r = vender(client, [{"descripcion": "Lentes", "precio": "10"}], cliente_id=str(c2), receta_id="1")
     assert r.status_code == 200
     assert db.execute("SELECT COUNT(*) FROM ventas").fetchone()[0] == 0
 
@@ -260,7 +255,7 @@ def test_configuracion_y_copia(client):
 
 
 def test_cambio_rapido_de_estado_desde_inicio(client, db):
-    vender(client, [{"descripcion": "Gafas graduadas", "precio": "200"}],
+    vender(client, [{"descripcion": "Lentes graduadas", "precio": "200"}],
            estado="En taller", notas="Montaje al aire", fecha_entrega_prevista="2026-10-10")
     inicio = client.get("/").get_data(as_text=True)
     assert 'class="cambio-estado"' in inicio
@@ -272,27 +267,16 @@ def test_cambio_rapido_de_estado_desde_inicio(client, db):
     assert tuple(venta) == ("Listo para recoger", "Montaje al aire", "2026-10-10")
 
     client.post("/ventas/1/cambiar-estado", data={"estado": "Entregado", "volver": "/"})
-    assert "Gafas graduadas" not in client.get("/").get_data(as_text=True)  # sale de encargos en curso
+    assert "Lentes graduadas" not in client.get("/").get_data(as_text=True)  # sale de encargos en curso
 
 
 def test_cambio_rapido_de_estado_validaciones(client, db):
-    vender(client, [{"descripcion": "Gafas", "precio": "50"}], estado="Pendiente")
+    vender(client, [{"descripcion": "Lentes", "precio": "50"}], estado="Pendiente")
     assert client.post("/ventas/1/cambiar-estado", data={"estado": "Anulada"}).status_code == 400
     assert client.post("/ventas/1/cambiar-estado", data={"estado": "Inventado"}).status_code == 400
     # no redirige a webs externas
     r = client.post("/ventas/1/cambiar-estado", data={"estado": "En taller", "volver": "//malo.com"})
     assert r.headers["Location"] == "/"
-
-
-def test_migracion_iva_21_a_22(tmp_path):
-    ruta = str(tmp_path / "vieja.db")
-    create_app({"DATABASE": ruta})
-    conn = connect(ruta)
-    conn.execute("INSERT INTO productos (codigo, categoria, iva) VALUES ('A', 'Montura', 21)")
-    conn.commit()
-    create_app({"DATABASE": ruta})  # al volver a abrir el programa
-    assert conn.execute("SELECT iva FROM productos").fetchone()[0] == 22
-    conn.close()
 
 
 def test_orden_de_venta(client, db):
@@ -338,7 +322,7 @@ def test_medidas_del_armazon(client, db):
     detalle = client.get(f"/productos/{pid}").get_data(as_text=True)
     assert "Calibre (C)" in detalle and "55" in detalle
     # en otras categorías no se guardan medidas
-    pid2 = crear_producto(client, codigo="SOL1", categoria="Gafa de sol", calibre="60")
+    pid2 = crear_producto(client, codigo="SOL1", categoria="Lentes de sol", calibre="60")
     assert db.execute("SELECT calibre FROM productos WHERE id=?", (pid2,)).fetchone()[0] == ""
 
 
@@ -493,11 +477,11 @@ def test_compras_anteriores_no_afectan_datos(client, db):
 
 def test_editar_y_eliminar_compra_anterior(client, db):
     cid = crear_cliente(client)
-    client.post(f"/clientes/{cid}/compras-anteriores", data={"descripcion": "Gafas de sol", "importe": "2000"})
+    client.post(f"/clientes/{cid}/compras-anteriores", data={"descripcion": "Lentes de sol", "importe": "2000"})
     assert client.get(f"/clientes/{cid}/compras-anteriores/1/editar").status_code == 200
-    client.post(f"/clientes/{cid}/compras-anteriores/1/editar", data={"descripcion": "Gafas de sol Ray-Ban", "importe": ""})
+    client.post(f"/clientes/{cid}/compras-anteriores/1/editar", data={"descripcion": "Lentes de sol Ray-Ban", "importe": ""})
     fila = db.execute("SELECT descripcion, importe FROM compras_anteriores").fetchone()
-    assert tuple(fila) == ("Gafas de sol Ray-Ban", None)
+    assert tuple(fila) == ("Lentes de sol Ray-Ban", None)
     client.post(f"/clientes/{cid}/compras-anteriores/1/eliminar")
     assert db.execute("SELECT COUNT(*) FROM compras_anteriores").fetchone()[0] == 0
 
@@ -616,17 +600,17 @@ def test_armazon_propio_no_se_duplica(tmp_path):
 def test_receta_de_cerca_automatica(client, db):
     cid = crear_cliente(client)
     r = client.post(f"/clientes/{cid}/recetas/nueva", data={
-        "fecha": "2026-09-20", "tipo": "Gafas lejos", "optometrista": "Laura",
+        "fecha": "2026-09-20", "tipo": "Lentes lejos", "optometrista": "Laura",
         "od_esfera": "-1,75", "od_cilindro": "-0,50", "od_eje": "90", "od_adicion": "+2,00", "od_dnp": "31",
         "oi_esfera": "+0,50", "oi_cilindro": "", "oi_eje": "", "oi_adicion": "2,25", "oi_dnp": "30,5",
         "observaciones": "Control anual", "generar_cerca": "1",
     }, follow_redirects=True)
-    assert "También se creó la receta para gafas de cerca" in r.get_data(as_text=True)
+    assert "También se creó la receta para lentes de cerca" in r.get_data(as_text=True)
     recetas = db.execute("SELECT * FROM recetas ORDER BY id").fetchall()
     assert len(recetas) == 2
     cerca, lejos = recetas  # la escrita queda como la más reciente («Actual»)
-    assert lejos["tipo"] == "Gafas lejos" and lejos["od_esfera"] == "-1,75" and lejos["od_adicion"] == "+2,00"
-    assert cerca["tipo"] == "Gafas cerca"
+    assert lejos["tipo"] == "Lentes lejos" and lejos["od_esfera"] == "-1,75" and lejos["od_adicion"] == "+2,00"
+    assert cerca["tipo"] == "Lentes cerca"
     assert cerca["od_esfera"] == "+0,25" and cerca["oi_esfera"] == "+2,75"
     assert cerca["od_adicion"] == "" and cerca["oi_adicion"] == ""
     # el resto es idéntico
@@ -637,38 +621,38 @@ def test_receta_de_cerca_automatica(client, db):
 def test_receta_de_cerca_casos(client, db):
     cid = crear_cliente(client)
     # sin marcar «generar_cerca» no se crea
-    client.post(f"/clientes/{cid}/recetas/nueva", data={"tipo": "Gafas lejos", "od_esfera": "-1,00", "od_adicion": "+1,00"})
+    client.post(f"/clientes/{cid}/recetas/nueva", data={"tipo": "Lentes lejos", "od_esfera": "-1,00", "od_adicion": "+1,00"})
     assert db.execute("SELECT COUNT(*) FROM recetas").fetchone()[0] == 1
     # esfera vacía o neutra = 0; esfera que queda en cero
     client.post(f"/clientes/{cid}/recetas/nueva", data={
-        "tipo": "Gafas lejos", "od_esfera": "", "od_adicion": "+1,50", "oi_esfera": "-1,00", "oi_adicion": "+1,00", "generar_cerca": "1"})
-    cerca = db.execute("SELECT * FROM recetas WHERE tipo = 'Gafas cerca' ORDER BY id DESC").fetchone()
+        "tipo": "Lentes lejos", "od_esfera": "", "od_adicion": "+1,50", "oi_esfera": "-1,00", "oi_adicion": "+1,00", "generar_cerca": "1"})
+    cerca = db.execute("SELECT * FROM recetas WHERE tipo = 'Lentes cerca' ORDER BY id DESC").fetchone()
     assert (cerca["od_esfera"], cerca["oi_esfera"]) == ("+1,50", "0,00")
     # texto que no es un número: se avisa y no se inventa
     r = client.post(f"/clientes/{cid}/recetas/nueva", data={
-        "tipo": "Gafas lejos", "od_esfera": "ver informe", "od_adicion": "+2,00", "generar_cerca": "1"}, follow_redirects=True)
+        "tipo": "Lentes lejos", "od_esfera": "ver informe", "od_adicion": "+2,00", "generar_cerca": "1"}, follow_redirects=True)
     assert "Revisa la esfera de OD" in r.get_data(as_text=True)
 
 
 
-def test_receta_de_cerca_solo_desde_gafas_lejos(client, db):
+def test_receta_de_cerca_solo_desde_lentes_lejos(client, db):
     cid = crear_cliente(client)
-    for tipo in ["Gafas progresivas", "Gafas bifocales", "Gafas cerca", "Lentes de contacto"]:
+    for tipo in ["Lentes progresivas", "Lentes bifocales", "Lentes cerca", "Lentes de contacto"]:
         client.post(f"/clientes/{cid}/recetas/nueva", data={
             "tipo": tipo, "od_esfera": "-1,00", "od_adicion": "+2,00", "generar_cerca": "1"})
     assert db.execute("SELECT COUNT(*) FROM recetas").fetchone()[0] == 4  # ninguna de cerca extra
-    assert db.execute("SELECT COUNT(*) FROM recetas WHERE tipo = 'Gafas cerca'").fetchone()[0] == 1
+    assert db.execute("SELECT COUNT(*) FROM recetas WHERE tipo = 'Lentes cerca'").fetchone()[0] == 1
 
 
 def test_lejos_y_cerca_quedan_como_actuales(client, db):
     cid = crear_cliente(client)
-    client.post(f"/clientes/{cid}/recetas/nueva", data={"fecha": "2025-01-10", "tipo": "Gafas lejos", "od_esfera": "-0,50"})
+    client.post(f"/clientes/{cid}/recetas/nueva", data={"fecha": "2025-01-10", "tipo": "Lentes lejos", "od_esfera": "-0,50"})
     client.post(f"/clientes/{cid}/recetas/nueva", data={
-        "fecha": "2026-09-20", "tipo": "Gafas lejos", "od_esfera": "-1,00", "od_adicion": "+2,00", "generar_cerca": "1"})
+        "fecha": "2026-09-20", "tipo": "Lentes lejos", "od_esfera": "-1,00", "od_adicion": "+2,00", "generar_cerca": "1"})
     ficha = client.get(f"/clientes/{cid}").get_data(as_text=True)
     recetas = ficha.split('id="recetas"', 1)[1].split('id="compras"', 1)[0]
     assert recetas.count(">Actual</span>") == 2  # lejos y cerca de la última visita, no la de 2025
-    assert "Gafas lejos + Gafas cerca" in ficha
+    assert "Lentes lejos + Lentes cerca" in ficha
 
 
 def test_armazon_propio_ranurado(client, db):
@@ -729,7 +713,7 @@ def venta_varias_recetas(client, cid, recetas, lineas):
 
 def test_venta_con_lejos_y_cerca(client, db):
     cid = crear_cliente(client)
-    client.post(f"/clientes/{cid}/recetas/nueva", data={"fecha": "2026-09-20", "tipo": "Gafas lejos",
+    client.post(f"/clientes/{cid}/recetas/nueva", data={"fecha": "2026-09-20", "tipo": "Lentes lejos",
                                                         "od_esfera": "-1,00", "od_adicion": "+2,00", "generar_cerca": "1"})
     cerca, lejos = [r["id"] for r in db.execute("SELECT id FROM recetas ORDER BY id")]
     l1, l2 = crear_lente(client, "L1", "Monofocal lejos"), crear_lente(client, "L2", "Monofocal cerca")
@@ -742,10 +726,10 @@ def test_venta_con_lejos_y_cerca(client, db):
     asignadas = [x[0] for x in db.execute("SELECT receta_id FROM lineas_venta ORDER BY id")]
     assert asignadas == [lejos, cerca, None]
     orden = client.get("/ventas/1/orden").get_data(as_text=True)
-    assert "Receta · Gafas lejos" in orden and "Receta · Gafas cerca" in orden
+    assert "Receta · Lentes lejos" in orden and "Receta · Lentes cerca" in orden
     assert "Para: <b>Monofocal cerca</b>" in orden and "+1,00" in orden
     detalle = client.get("/ventas/1").get_data(as_text=True)
-    assert detalle.count("Receta utilizada") == 2 and "Receta: Gafas lejos" in detalle
+    assert detalle.count("Receta utilizada") == 2 and "Receta: Lentes lejos" in detalle
     # no se puede borrar una receta usada como segunda receta de una venta
     client.post(f"/clientes/{cid}/recetas/{cerca}/eliminar")
     assert db.execute("SELECT COUNT(*) FROM recetas").fetchone()[0] == 2
@@ -753,8 +737,8 @@ def test_venta_con_lejos_y_cerca(client, db):
 
 def test_varias_recetas_exige_elegir_en_cada_lente(client, db):
     cid = crear_cliente(client)
-    client.post(f"/clientes/{cid}/recetas/nueva", data={"tipo": "Gafas lejos"})
-    client.post(f"/clientes/{cid}/recetas/nueva", data={"tipo": "Gafas cerca"})
+    client.post(f"/clientes/{cid}/recetas/nueva", data={"tipo": "Lentes lejos"})
+    client.post(f"/clientes/{cid}/recetas/nueva", data={"tipo": "Lentes cerca"})
     l1 = crear_lente(client)
     r = venta_varias_recetas(client, cid, [1, 2], [(str(l1), "Monofocal 1.6", "")])
     assert r.status_code == 200 and "Elige a qué receta corresponde" in r.get_data(as_text=True)
@@ -770,15 +754,15 @@ def test_varias_recetas_exige_elegir_en_cada_lente(client, db):
 
 def test_receta_de_otro_cliente_entre_varias(client, db):
     c1, c2 = crear_cliente(client), crear_cliente(client, nombre="Luis")
-    client.post(f"/clientes/{c1}/recetas/nueva", data={"tipo": "Gafas lejos"})
-    client.post(f"/clientes/{c2}/recetas/nueva", data={"tipo": "Gafas cerca"})
+    client.post(f"/clientes/{c1}/recetas/nueva", data={"tipo": "Lentes lejos"})
+    client.post(f"/clientes/{c2}/recetas/nueva", data={"tipo": "Lentes cerca"})
     r = venta_varias_recetas(client, c1, [1, 2], [("", "Servicio", "")])
     assert r.status_code == 200 and "no pertenece" in r.get_data(as_text=True)
 
 
 def test_numero_de_trabajo_por_receta(client, db):
     cid = crear_cliente(client)
-    client.post(f"/clientes/{cid}/recetas/nueva", data={"tipo": "Gafas lejos", "od_esfera": "-1,00",
+    client.post(f"/clientes/{cid}/recetas/nueva", data={"tipo": "Lentes lejos", "od_esfera": "-1,00",
                                                         "od_adicion": "+2,00", "generar_cerca": "1"})
     cerca, lejos = [r["id"] for r in db.execute("SELECT id FROM recetas ORDER BY id")]
     l1 = crear_lente(client)
@@ -794,16 +778,16 @@ def test_numero_de_trabajo_por_receta(client, db):
     # número de la receta de lejos: el pulsador sigue para la de cerca
     client.post("/ventas/1/numero-trabajo", data={"numero_trabajo": "VT-100", "receta_id": str(lejos)})
     inicio = client.get("/").get_data(as_text=True)
-    assert "Nº VT-100 · Gafas lejos" in inicio and "+ Nº de trabajo" in inicio
+    assert "Nº VT-100 · Lentes lejos" in inicio and "+ Nº de trabajo" in inicio
     formulario = inicio.split('id="trabajo-1"', 1)[1].split("</form>", 1)[0]
-    assert "Gafas cerca" in formulario and "Gafas lejos" not in formulario  # solo la que falta
+    assert "Lentes cerca" in formulario and "Lentes lejos" not in formulario  # solo la que falta
     # número de la de cerca: ya no hay pulsador
     client.post("/ventas/1/numero-trabajo", data={"numero_trabajo": "VT-101", "receta_id": str(cerca)})
     inicio = client.get("/").get_data(as_text=True)
-    assert "+ Nº de trabajo" not in inicio and "Nº VT-101 · Gafas cerca" in inicio
+    assert "+ Nº de trabajo" not in inicio and "Nº VT-101 · Lentes cerca" in inicio
 
     ficha = client.get(f"/clientes/{cid}").get_data(as_text=True)
-    assert "Nº de trabajo Gafas lejos: VT-100" in ficha and "Nº de trabajo Gafas cerca: VT-101" in ficha
+    assert "Nº de trabajo Lentes lejos: VT-100" in ficha and "Nº de trabajo Lentes cerca: VT-101" in ficha
     # corregir uno desde la ficha de la venta
     detalle = client.get("/ventas/1").get_data(as_text=True)
     assert f'name="numero_trabajo_{lejos}"' in detalle
@@ -815,7 +799,7 @@ def test_numero_de_trabajo_por_receta(client, db):
 
 def test_orden_muestra_cada_receta_una_sola_vez(client, db):
     cid = crear_cliente(client)
-    client.post(f"/clientes/{cid}/recetas/nueva", data={"tipo": "Gafas lejos", "od_esfera": "-1,00",
+    client.post(f"/clientes/{cid}/recetas/nueva", data={"tipo": "Lentes lejos", "od_esfera": "-1,00",
                                                         "od_adicion": "+2,00", "generar_cerca": "1"})
     cerca, lejos = [r["id"] for r in db.execute("SELECT id FROM recetas ORDER BY id")]
     l1 = crear_lente(client)
@@ -823,7 +807,39 @@ def test_orden_muestra_cada_receta_una_sola_vez(client, db):
                          [(str(l1), "Lente lejos OD", str(lejos)), (str(l1), "Lente lejos OI", str(lejos)),
                           (str(l1), "Lente cerca", str(cerca))])
     orden = client.get("/ventas/1/orden").get_data(as_text=True)
-    assert orden.count("Receta · Gafas lejos") == 1 and orden.count("Receta · Gafas cerca") == 1
+    assert orden.count("Receta · Lentes lejos") == 1 and orden.count("Receta · Lentes cerca") == 1
     assert orden.count('<table class="graduacion">') == 2
     assert "Para: <b>Lente lejos OD, Lente lejos OI</b>" in orden and "Para: <b>Lente cerca</b>" in orden
     assert "Receta: <b>" not in orden  # ya no se repite debajo de cada producto
+
+
+def test_migracion_gafas_a_lentes(tmp_path):
+    ruta = str(tmp_path / "vieja.db")
+    create_app({"DATABASE": ruta})
+    conn = connect(ruta)
+    conn.execute("INSERT INTO clientes (nombre) VALUES ('Ana')")
+    conn.execute("INSERT INTO recetas (cliente_id, fecha, tipo) VALUES (1, '2026-01-01', 'Gafas progresivas')")
+    conn.execute("INSERT INTO recetas (cliente_id, fecha, tipo) VALUES (1, '2026-01-01', 'Lentes de contacto')")
+    conn.execute("INSERT INTO productos (codigo, categoria) VALUES ('S1', 'Gafa de sol')")
+    conn.commit()
+    create_app({"DATABASE": ruta})
+    assert [r[0] for r in conn.execute("SELECT tipo FROM recetas ORDER BY id")] == ["Lentes progresivas", "Lentes de contacto"]
+    assert conn.execute("SELECT categoria FROM productos WHERE codigo = 'S1'").fetchone()[0] == "Lentes de sol"
+    conn.close()
+
+
+def test_sin_gafas_ni_impuestos_en_pantalla(client, db):
+    cid = crear_cliente(client)
+    client.post(f"/clientes/{cid}/recetas/nueva", data={"tipo": "Lentes lejos", "od_esfera": "-1,00"})
+    pid = crear_producto(client, precio_coste="40", precio_venta="120")
+    vender(client, [{"producto_id": str(pid), "precio": "120"}], cliente_id=str(cid), receta_id="1", pago="120")
+    import re
+    for url in ["/", "/productos/nuevo", f"/productos/{pid}", "/ventas/nueva", "/ventas/1", "/ventas/1/ticket",
+                "/ventas/1/orden", f"/clientes/{cid}", f"/clientes/{cid}/recetas/nueva", "/informes", "/caja"]:
+        html = client.get(url).get_data(as_text=True)
+        texto = re.sub(r"<[^>]+>", " ", html)
+        assert not re.search(r"(?i)\bgafas?\b|\biva\b|impuesto|cuota", texto), url
+    detalle = client.get(f"/productos/{pid}").get_data(as_text=True)
+    assert "$ 80,00" in detalle and "66.7 % del precio de venta" in detalle  # margen = 120 - 40
+    csv = client.get("/productos/exportar.csv").get_data(as_text=True)
+    assert "IVA" not in csv

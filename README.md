@@ -16,8 +16,8 @@ todos los datos quedan guardados en un único archivo (`datos/optica.db`).
 - Historial de compras con lo pendiente de pago.
 
 **Stock**
-- Productos por categoría (armazones con calibre, puente, diagonal y altura, gafas de sol, lentes oftálmicas, lentes de contacto,
-  líquidos, accesorios, servicios), con precio de coste, precio de venta en pesos uruguayos e IVA de Uruguay (22 %, 10 %, 0 %).
+- Productos por categoría (armazones con calibre, puente, diagonal y altura, lentes de sol, lentes oftálmicas, lentes de contacto,
+  líquidos, accesorios, servicios), con precio de coste y precio de venta en pesos uruguayos.
 - Entradas de mercancía y ajustes por recuento, con el historial de movimientos.
 - Aviso de stock bajo, valor del inventario y exportación a Excel (CSV).
 - Productos "por encargo" que no controlan stock (p. ej. lentes graduadas a medida).
@@ -30,7 +30,7 @@ todos los datos quedan guardados en un único archivo (`datos/optica.db`).
 - Encargos: estados *Pendiente → En taller → Listo para recoger → Entregado* y fecha de
   entrega prevista.
 - Cobros parciales (señal + resto), pudiendo combinar varios medios de pago en un mismo cobro.
-- Comprobante de venta imprimible con desglose de IVA (no sustituye a la facturación electrónica de DGI).
+- Comprobante de venta imprimible.
 - Anulación: devuelve los artículos al stock y registra la devolución del dinero.
 
 **Además**
