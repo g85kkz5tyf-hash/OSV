@@ -35,7 +35,7 @@ def init_db(path):
     conn.execute("UPDATE productos SET categoria = 'Armazón' WHERE categoria = 'Montura'")
     nuevas_columnas = {
         "productos": ["calibre", "puente", "diagonal", "altura"],
-        "ventas": ["ejecucion"],  # taller propio o laboratorio
+        "ventas": ["ejecucion", "numero_trabajo"],  # taller o laboratorio, y nº del laboratorio
     }
     for tabla, nuevas in nuevas_columnas.items():
         columnas = {fila[1] for fila in conn.execute(f"PRAGMA table_info({tabla})")}

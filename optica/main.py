@@ -8,7 +8,7 @@ from pathlib import Path
 from flask import (Blueprint, abort, current_app, flash, redirect, render_template, request,
                    send_file, url_for)
 
-from .constantes import TALLER_PROPIO, ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO
+from .constantes import LABORATORIOS, TALLER_PROPIO, ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO
 from .db import get_config, get_db, set_config
 
 bp = Blueprint("main", __name__)
@@ -91,7 +91,7 @@ def inicio():
         "inicio.html", ventas_hoy=ventas_hoy, ventas_mes=ventas_mes, cobrado_hoy=cobrado_hoy,
         encargos=encargos, pendiente_cobro=pendiente_cobro, stock_bajo=stock_bajo,
         tareas=tareas, hoy=hoy.isoformat(),
-        estados=[e for e in ESTADOS_VENTA if e != "Anulada"], metodos=METODOS_PAGO,
+        estados=[e for e in ESTADOS_VENTA if e != "Anulada"], metodos=METODOS_PAGO, laboratorios=LABORATORIOS,
     )
 
 

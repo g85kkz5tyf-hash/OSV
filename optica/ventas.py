@@ -365,11 +365,13 @@ def estado(venta_id):
     except ErrorVenta as e:
         flash(str(e), "error")
         return redirect(url_for("ventas.detalle", venta_id=venta_id))
+    numero = request.form.get("numero_trabajo", "").strip() if ejecucion in LABORATORIOS else ""
     db = get_db()
     db.execute(
-        "UPDATE ventas SET estado = ?, fecha_entrega_prevista = ?, notas = ?, ejecucion = ? WHERE id = ?",
+        "UPDATE ventas SET estado = ?, fecha_entrega_prevista = ?, notas = ?, ejecucion = ?,"
+        " numero_trabajo = ? WHERE id = ?",
         (nuevo, request.form.get("fecha_entrega_prevista", "").strip(),
-         request.form.get("notas", "").strip(), ejecucion, venta_id),
+         request.form.get("notas", "").strip(), ejecucion, numero, venta_id),
     )
     db.commit()
     flash("Venta actualizada.", "ok")
@@ -388,6 +390,24 @@ def cambiar_estado(venta_id):
     db.commit()
     flash(f"Venta {venta['numero']}: estado cambiado a «{nuevo}».", "ok")
     return redirect(destino_seguro(request.form.get("volver", ""), url_for("main.inicio")))
+
+
+@bp.route("/<int:venta_id>/numero-trabajo", methods=["POST"])
+def numero_trabajo(venta_id):
+    """Guarda el número de trabajo que asigna el laboratorio."""
+    venta = obtener_venta(venta_id)
+    volver = destino_seguro(request.form.get("volver", ""), url_for("ventas.detalle", venta_id=venta_id))
+    numero = request.form.get("numero_trabajo", "").strip()
+    if venta["ejecucion"] not in LABORATORIOS:
+        flash("Esta venta no se ejecuta en un laboratorio.", "error")
+    elif not numero:
+        flash("Escribe el número de trabajo.", "error")
+    else:
+        db = get_db()
+        db.execute("UPDATE ventas SET numero_trabajo = ? WHERE id = ?", (numero, venta_id))
+        db.commit()
+        flash(f"Venta {venta['numero']}: número de trabajo {numero} ({venta['ejecucion']}) guardado.", "ok")
+    return redirect(volver)
 
 
 @bp.route("/<int:venta_id>/anular", methods=["POST"])

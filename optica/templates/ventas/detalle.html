@@ -97,7 +97,7 @@
         <select id="estado" name="estado">{% for e in estados %}<option {{ 'selected' if e == venta.estado }}>{{ e }}</option>{% endfor %}</select>
       </div>
       {% set lugar = 'taller' if venta.ejecucion == taller_propio else ('laboratorio' if venta.ejecucion in laboratorios else '') %}
-      {{ selector_ejecucion(lugar, venta.ejecucion, laboratorios) }}
+      {{ selector_ejecucion(lugar, venta.ejecucion, laboratorios, venta.numero_trabajo) }}
       <div>
         <label for="fecha_entrega_prevista">Entrega prevista</label>
         <input type="date" id="fecha_entrega_prevista" name="fecha_entrega_prevista" value="{{ venta.fecha_entrega_prevista }}">

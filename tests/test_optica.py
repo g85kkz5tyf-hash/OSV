@@ -511,3 +511,45 @@ def test_compra_anterior_requiere_descripcion(client, db):
     otro = crear_cliente(client, nombre="Luis")
     client.post(f"/clientes/{cid}/compras-anteriores", data={"descripcion": "Armazón"})
     assert client.post(f"/clientes/{otro}/compras-anteriores/1/eliminar").status_code == 404
+
+
+def test_numero_de_trabajo_del_laboratorio(client, db):
+    cid = crear_cliente(client)
+    vender(client, [{"descripcion": "Progresivos"}], cliente_id=str(cid), lugar="laboratorio",
+           laboratorio="Vidaltec", estado="En taller")
+    vender(client, [{"descripcion": "Monofocales"}], cliente_id=str(cid), lugar="taller", estado="En taller")
+    inicio = client.get("/").get_data(as_text=True)
+    # el pulsador solo aparece en la venta de laboratorio
+    assert inicio.count("+ Nº de trabajo") == 1 and 'id="trabajo-1"' in inicio and 'id="trabajo-2"' not in inicio
+
+    r = client.post("/ventas/1/numero-trabajo", data={"numero_trabajo": " VT-4589 ", "volver": "/"})
+    assert r.status_code == 302 and r.headers["Location"] == "/"
+    assert db.execute("SELECT numero_trabajo FROM ventas WHERE id = 1").fetchone()[0] == "VT-4589"
+    inicio = client.get("/").get_data(as_text=True)
+    assert "+ Nº de trabajo" not in inicio and "Nº VT-4589" in inicio
+
+    ficha = client.get(f"/clientes/{cid}").get_data(as_text=True)
+    assert "Laboratorio Vidaltec" in ficha and "Nº de trabajo: VT-4589" in ficha
+    assert "Taller propio" in ficha
+
+
+def test_numero_de_trabajo_validaciones(client, db):
+    vender(client, [{"descripcion": "Monofocales"}], lugar="taller", estado="En taller")
+    r = client.post("/ventas/1/numero-trabajo", data={"numero_trabajo": "123"}, follow_redirects=True)
+    assert "no se ejecuta en un laboratorio" in r.get_data(as_text=True)
+    vender(client, [{"descripcion": "Progresivos"}], lugar="laboratorio", laboratorio="Jiki", estado="En taller")
+    r = client.post("/ventas/2/numero-trabajo", data={"numero_trabajo": "  "}, follow_redirects=True)
+    assert "Escribe el número de trabajo" in r.get_data(as_text=True)
+    assert db.execute("SELECT numero_trabajo FROM ventas WHERE id = 2").fetchone()[0] == ""
+
+
+def test_numero_de_trabajo_se_corrige_desde_la_ficha(client, db):
+    vender(client, [{"descripcion": "Progresivos"}], lugar="laboratorio", laboratorio="Jiki", estado="En taller")
+    client.post("/ventas/1/numero-trabajo", data={"numero_trabajo": "111"})
+    assert 'value="111"' in client.get("/ventas/1").get_data(as_text=True)
+    client.post("/ventas/1/estado", data={"estado": "En taller", "lugar": "laboratorio", "laboratorio": "Jiki",
+                                          "numero_trabajo": "112"})
+    assert db.execute("SELECT numero_trabajo FROM ventas").fetchone()[0] == "112"
+    # si pasa a taller propio, el número del laboratorio se borra
+    client.post("/ventas/1/estado", data={"estado": "En taller", "lugar": "taller", "numero_trabajo": "112"})
+    assert db.execute("SELECT numero_trabajo FROM ventas").fetchone()[0] == ""

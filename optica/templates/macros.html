@@ -25,7 +25,7 @@
 </table>
 {%- endmacro %}
 
-{% macro selector_ejecucion(lugar, laboratorio, laboratorios) -%}
+{% macro selector_ejecucion(lugar, laboratorio, laboratorios, numero_trabajo=none) -%}
 <div>
   <label for="lugar">¿Dónde se ejecuta?</label>
   <select id="lugar" name="lugar">
@@ -40,6 +40,10 @@
     <option value="">— Elige el laboratorio —</option>
     {% for l in laboratorios %}<option {{ 'selected' if laboratorio == l }}>{{ l }}</option>{% endfor %}
   </select>
+  {% if numero_trabajo is not none %}
+  <label for="numero_trabajo" style="margin-top: 10px">Nº de trabajo del laboratorio</label>
+  <input id="numero_trabajo" name="numero_trabajo" value="{{ numero_trabajo }}" autocomplete="off">
+  {% endif %}
 </div>
 <script>
   // El menú de laboratorios solo aparece si el trabajo va a laboratorio

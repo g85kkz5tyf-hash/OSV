@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS ventas (
     total INTEGER NOT NULL DEFAULT 0,
     estado TEXT NOT NULL DEFAULT 'Entregado', -- Pendiente, En taller, Listo para recoger, Entregado, Anulada
     ejecucion TEXT NOT NULL DEFAULT '', -- «Taller propio» o el nombre del laboratorio
+    numero_trabajo TEXT NOT NULL DEFAULT '', -- número que da el laboratorio al trabajo
     fecha_entrega_prevista TEXT NOT NULL DEFAULT '',
     notas TEXT NOT NULL DEFAULT ''
 );

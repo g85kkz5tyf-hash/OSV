@@ -35,7 +35,7 @@
   {% if encargos %}
   <div class="tabla-scroll">
   <table>
-    <thead><tr><th>Nº</th><th>Fecha</th><th>Cliente</th><th>Teléfono</th><th>Entrega prevista</th><th>Estado</th><th class="num">Pendiente</th></tr></thead>
+    <thead><tr><th>Nº</th><th>Fecha</th><th>Cliente</th><th>Teléfono</th><th>Entrega prevista</th><th>Se ejecuta en</th><th>Estado</th><th class="num">Pendiente</th></tr></thead>
     <tbody>
     {% for v in encargos %}
       <tr>
@@ -44,6 +44,13 @@
         <td>{% if v.cliente_id %}<a href="{{ url_for('clientes.ficha', cliente_id=v.cliente_id) }}">{{ v.cliente_nombre }}</a>{% else %}<span class="suave">Sin cliente</span>{% endif %}</td>
         <td>{{ v.cliente_telefono or '' }}</td>
         <td class="{{ 'alerta' if v.fecha_entrega_prevista and v.fecha_entrega_prevista < hoy }}">{{ v.fecha_entrega_prevista|fecha }}</td>
+        <td>
+          {{ v.ejecucion or '—' }}
+          {% if v.ejecucion in laboratorios %}
+            {% if v.numero_trabajo %}<br><small class="suave">Nº {{ v.numero_trabajo }}</small>
+            {% else %}<br><button type="button" class="secundario peque boton-desplegar" data-fila="trabajo-{{ v.id }}">+ Nº de trabajo</button>{% endif %}
+          {% endif %}
+        </td>
         <td>
           <form method="post" action="{{ url_for('ventas.cambiar_estado', venta_id=v.id) }}" class="cambio-estado">
             <input type="hidden" name="volver" value="{{ request.path }}">
@@ -61,9 +68,24 @@
           {% endif %}
         </td>
       </tr>
+      {% if v.ejecucion in laboratorios and not v.numero_trabajo %}
+      <tr id="trabajo-{{ v.id }}" class="fila-cobro-rapido" hidden>
+        <td colspan="8">
+          <form method="post" action="{{ url_for('ventas.numero_trabajo', venta_id=v.id) }}" class="filtros" style="margin: 0">
+            <input type="hidden" name="volver" value="{{ request.path }}">
+            <div class="busqueda" style="max-width: 360px">
+              <label for="numero-trabajo-{{ v.id }}">Nº de trabajo de {{ v.ejecucion }} · venta {{ v.numero }}</label>
+              <input id="numero-trabajo-{{ v.id }}" name="numero_trabajo" required autocomplete="off">
+            </div>
+            <button type="submit">Guardar</button>
+            <button type="button" class="secundario boton-cerrar" data-fila="trabajo-{{ v.id }}">Cancelar</button>
+          </form>
+        </td>
+      </tr>
+      {% endif %}
       {% if v.total > v.pagado %}
       <tr id="cobro-{{ v.id }}" class="fila-cobro-rapido" hidden>
-        <td colspan="7">
+        <td colspan="8">
           <form method="post" action="{{ url_for('ventas.pago', venta_id=v.id) }}">
             <input type="hidden" name="volver" value="{{ request.path }}">
             <strong>Cobrar venta {{ v.numero }}{{ ' · ' ~ v.cliente_nombre if v.cliente_id }}</strong>
@@ -141,11 +163,13 @@
 {% block scripts %}
 <script>
 // Cobro rápido del saldo sin salir de inicio
-document.querySelectorAll(".boton-cobrar, .cancelar-cobro").forEach(boton => {
+// y alta del nº de trabajo del laboratorio
+document.querySelectorAll(".boton-cobrar, .cancelar-cobro, .boton-desplegar, .boton-cerrar").forEach(boton => {
   boton.addEventListener("click", () => {
     const fila = document.getElementById(boton.dataset.fila);
-    fila.hidden = boton.classList.contains("cancelar-cobro") ? true : !fila.hidden;
-    if (!fila.hidden) fila.querySelector("input[name=importe]").focus();
+    const cerrar = boton.classList.contains("cancelar-cobro") || boton.classList.contains("boton-cerrar");
+    fila.hidden = cerrar ? true : !fila.hidden;
+    if (!fila.hidden) fila.querySelector("input:not([type=hidden])").focus();
   });
 });
 
