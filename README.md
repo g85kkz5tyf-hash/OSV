@@ -40,11 +40,13 @@ todos los datos quedan guardados en un único archivo (`datos/optica.db`).
 
 ## Instalación y uso
 
+Instrucciones paso a paso para quien no sabe de informática: [LEEME-INSTALACION.txt](LEEME-INSTALACION.txt).
+
 Necesitas **Python 3.10 o superior** ([descargar](https://www.python.org/downloads/); en Windows,
 marca la casilla *"Add Python to PATH"* al instalar).
 
 - **Windows:** doble clic en `iniciar-windows.bat`.
-- **Mac / Linux:** ejecuta `./iniciar-mac-linux.sh`.
+- **Mac:** doble clic en `iniciar-mac.command` (la primera vez: clic derecho → Abrir).
 
 La primera vez tarda un poco porque instala lo necesario. Después se abre el navegador en
 <http://127.0.0.1:5000>. Deja abierta la ventana negra mientras uses el programa.

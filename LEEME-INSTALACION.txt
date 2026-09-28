@@ -1,0 +1,62 @@
+GESTIÓN ÓPTICA - CÓMO INSTALARLO
+================================
+
+Solo hay que hacerlo una vez. Necesitas conexión a internet la primera vez.
+
+
+PASO 1. Instalar Python (un programa gratuito que necesita la aplicación)
+------------------------------------------------------------------------
+1. Entra en https://www.python.org/downloads/
+2. Pulsa el botón amarillo "Download Python".
+3. Abre el archivo descargado.
+   - WINDOWS: en la primera pantalla MARCA la casilla de abajo
+     "Add python.exe to PATH" y después pulsa "Install Now".
+   - MAC: pulsa "Continuar" / "Instalar" como en cualquier programa.
+4. Cuando termine, cierra el instalador.
+
+
+PASO 2. Colocar la carpeta del programa
+---------------------------------------
+1. Descomprime el archivo ZIP (clic derecho > "Extraer todo" en Windows,
+   doble clic en Mac).
+2. Mueve la carpeta resultante a un sitio fijo, por ejemplo "Documentos".
+   No la dejes en "Descargas", para no borrarla sin querer.
+
+
+PASO 3. Abrir el programa
+-------------------------
+- WINDOWS: doble clic en "iniciar-windows.bat".
+  Si aparece un aviso azul "Windows protegió su PC", pulsa
+  "Más información" y después "Ejecutar de todas formas".
+
+- MAC: la primera vez, clic derecho (o Control + clic) sobre
+  "iniciar-mac.command" y elige "Abrir". Si dice que no se puede abrir,
+  ve a Ajustes del Sistema > Privacidad y seguridad, baja hasta abajo
+  y pulsa "Abrir igualmente". Las siguientes veces basta con doble clic.
+
+La primera vez tarda uno o dos minutos. Después se abre solo el navegador
+con el programa.
+
+IMPORTANTE: se abre también una ventana negra con texto. NO LA CIERRES
+mientras uses el programa. Cuando termines la jornada, ciérrala.
+
+
+CADA DÍA
+--------
+Doble clic en "iniciar-windows.bat" (o "iniciar-mac.command").
+Truco (Windows): crea un acceso directo en el escritorio con clic derecho
+sobre el archivo > "Enviar a" > "Escritorio (crear acceso directo)".
+
+
+PRIMERA VEZ QUE LO USES
+-----------------------
+Entra en "Configuración" y escribe el nombre, NIF, dirección y teléfono de
+la óptica. Aparecerán en los tickets y en las recetas impresas.
+
+
+COPIAS DE SEGURIDAD
+-------------------
+Todos tus datos están en la carpeta "datos" dentro de la carpeta del
+programa. Una vez por semana entra en "Configuración" > "Descargar copia
+de seguridad" y guarda el archivo en un pendrive o en la nube.
+No borres la carpeta del programa: perderías los datos.
