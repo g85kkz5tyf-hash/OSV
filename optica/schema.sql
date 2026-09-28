@@ -129,15 +129,3 @@ CREATE TABLE IF NOT EXISTS configuracion (
     clave TEXT PRIMARY KEY,
     valor TEXT NOT NULL DEFAULT ''
 );
-
--- Avisos enviados a los clientes (SMS de «listo para recoger»)
-CREATE TABLE IF NOT EXISTS avisos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    venta_id INTEGER NOT NULL REFERENCES ventas(id) ON DELETE CASCADE,
-    fecha TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
-    telefono TEXT NOT NULL DEFAULT '',
-    mensaje TEXT NOT NULL DEFAULT '',
-    enviado INTEGER NOT NULL DEFAULT 0,
-    error TEXT NOT NULL DEFAULT ''
-);
-CREATE INDEX IF NOT EXISTS idx_avisos_venta ON avisos(venta_id);

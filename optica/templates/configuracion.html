@@ -7,7 +7,6 @@
   <h2>Datos de la óptica</h2>
   <p class="suave">Aparecen en la cabecera, en los tickets y en las recetas impresas.</p>
   <form class="campos" method="post">
-    <input type="hidden" name="seccion" value="tienda">
     {{ campo('nombre', 'Nombre comercial', config.nombre) }}
     {{ campo('nif', 'RUT', config.nif) }}
     {{ campo('direccion', 'Dirección', config.direccion) }}
@@ -18,45 +17,6 @@
       <textarea id="pie_ticket" name="pie_ticket" placeholder="Gracias por su visita. Garantía de 2 años en armazones…">{{ config.pie_ticket or '' }}</textarea>
     </div>
     <div class="ancho"><button type="submit">Guardar</button></div>
-  </form>
-</div>
-
-<div class="panel" id="sms">
-  <h2>Aviso por SMS cuando el encargo está listo</h2>
-  <p>Al cambiar una venta a <strong>«Listo para recoger»</strong>, el programa envía un SMS al teléfono del cliente.
-     Se usa el servicio <a href="https://www.twilio.com/try-twilio" target="_blank" rel="noopener">Twilio</a>,
-     que cobra por cada SMS enviado.</p>
-  <details>
-    <summary><strong>Cómo conseguir los datos de Twilio (una sola vez)</strong></summary>
-    <ol>
-      <li>Crea una cuenta en <a href="https://www.twilio.com/try-twilio" target="_blank" rel="noopener">twilio.com</a> y carga saldo.</li>
-      <li>En la página principal de tu cuenta (Console), copia el <strong>Account SID</strong> y el <strong>Auth Token</strong>.</li>
-      <li>Compra un número de teléfono de Twilio con capacidad de SMS (menú <em>Phone Numbers → Buy a number</em>) y copia el número completo, con el «+».</li>
-      <li>Pega los tres datos aquí abajo, marca «Enviar SMS automáticamente», guarda, y envía un SMS de prueba a tu celular.</li>
-    </ol>
-  </details>
-  <form class="campos" method="post" style="margin-top: 12px">
-    <input type="hidden" name="seccion" value="sms">
-    <div class="ancho">
-      <label class="check"><input type="checkbox" name="sms_activo" value="1" {{ 'checked' if config.sms_activo }}> Enviar SMS automáticamente al pasar a «Listo para recoger»</label>
-    </div>
-    {{ campo('sms_sid', 'Account SID', config.sms_sid, extra='autocomplete="off" placeholder="AC…"') }}
-    {{ campo('sms_token', 'Auth Token', config.sms_token, tipo='password', extra='autocomplete="off"') }}
-    {{ campo('sms_remitente', 'Número de Twilio (remitente)', config.sms_remitente, extra='placeholder="+1…"') }}
-    <div class="ancho">
-      <label for="sms_mensaje">Mensaje</label>
-      <textarea id="sms_mensaje" name="sms_mensaje" placeholder="{{ mensaje_por_defecto }}">{{ config.sms_mensaje or '' }}</textarea>
-      <p class="suave" style="margin: 4px 0 0">
-        Si lo dejas vacío se usa el mensaje de ejemplo. Puedes usar: <code>{nombre}</code> (nombre del cliente),
-        <code>{optica}</code>, <code>{numero}</code> (nº de venta), <code>{saldo}</code> (lo que falta pagar) y <code>{telefono}</code> (de la óptica).
-        Los mensajes cortos y sin tildes cuestan menos.
-      </p>
-    </div>
-    <div class="ancho"><button type="submit">Guardar</button></div>
-  </form>
-  <form class="filtros" method="post" action="{{ url_for('main.sms_prueba') }}" style="margin-top: 16px">
-    <div class="busqueda"><label for="telefono_prueba">Enviar un SMS de prueba a</label><input id="telefono_prueba" name="telefono" placeholder="099 123 456" required></div>
-    <button type="submit" class="secundario">Enviar prueba</button>
   </form>
 </div>
 
