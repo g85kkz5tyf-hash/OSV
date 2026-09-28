@@ -27,7 +27,7 @@
     table.graduacion td:first-child, table.graduacion th:first-child { text-align: left; font-weight: 700; width: 50px; }
     .medidas-armazon { margin-top: 4px; display: flex; gap: 18px; font-size: 13px; }
     .medidas-armazon b { font-size: 14px; }
-    .receta-de-linea { margin-top: 4px; font-size: 13px; }
+    .receta-de-linea { margin: -2px 0 6px; font-size: 13px; }
     .notas { border: 1px solid #999; padding: 8px; white-space: pre-line; min-height: 40px; }
     .importes { width: 55%; margin-left: auto; margin-top: 20px; }
     .fila-importe { display: flex; align-items: stretch; margin-bottom: 10px; }
@@ -96,9 +96,6 @@
             {% if l.ranurado %}<span><b>RANURADO</b></span>{% endif %}
           </div>
           {% endif %}
-          {% if recetas|length > 1 %}{% for r in recetas if r.id == l.receta_id %}
-          <div class="receta-de-linea">Receta: <b>{{ r.tipo }}</b> ({{ r.fecha|fecha }})</div>
-          {% endfor %}{% endif %}
         </td>
         <td class="num">{{ l.importe|moneda }}</td>
       </tr>
@@ -108,6 +105,10 @@
 
   {% for receta in (recetas or [none]) %}
   <h2>Receta{% if receta %} · {{ receta.tipo }} · {{ receta.fecha|fecha }}{% if receta.optometrista %} · {{ receta.optometrista }}{% endif %}{% endif %}</h2>
+  {% if receta and recetas|length > 1 %}
+    {% set productos = lineas|selectattr('receta_id', 'equalto', receta.id)|map(attribute='descripcion')|list %}
+    {% if productos %}<p class="receta-de-linea">Para: <b>{{ productos|join(', ') }}</b></p>{% endif %}
+  {% endif %}
   <table class="graduacion">
     <thead><tr><th></th>{% for _, etiqueta in campos_ojo %}<th>{{ etiqueta }}</th>{% endfor %}</tr></thead>
     <tbody>

@@ -743,7 +743,7 @@ def test_venta_con_lejos_y_cerca(client, db):
     assert asignadas == [lejos, cerca, None]
     orden = client.get("/ventas/1/orden").get_data(as_text=True)
     assert "Receta · Gafas lejos" in orden and "Receta · Gafas cerca" in orden
-    assert "Receta: <b>Gafas cerca</b>" in orden and "+1,00" in orden
+    assert "Para: <b>Monofocal cerca</b>" in orden and "+1,00" in orden
     detalle = client.get("/ventas/1").get_data(as_text=True)
     assert detalle.count("Receta utilizada") == 2 and "Receta: Gafas lejos" in detalle
     # no se puede borrar una receta usada como segunda receta de una venta
@@ -810,3 +810,20 @@ def test_numero_de_trabajo_por_receta(client, db):
     client.post("/ventas/1/estado", data={"estado": "En taller", **datos, f"numero_trabajo_{lejos}": "VT-200",
                                           f"numero_trabajo_{cerca}": "VT-101"})
     assert db.execute("SELECT numero_trabajo FROM venta_recetas WHERE receta_id = ?", (lejos,)).fetchone()[0] == "VT-200"
+
+
+
+def test_orden_muestra_cada_receta_una_sola_vez(client, db):
+    cid = crear_cliente(client)
+    client.post(f"/clientes/{cid}/recetas/nueva", data={"tipo": "Gafas lejos", "od_esfera": "-1,00",
+                                                        "od_adicion": "+2,00", "generar_cerca": "1"})
+    cerca, lejos = [r["id"] for r in db.execute("SELECT id FROM recetas ORDER BY id")]
+    l1 = crear_lente(client)
+    venta_varias_recetas(client, cid, [lejos, cerca, lejos],
+                         [(str(l1), "Lente lejos OD", str(lejos)), (str(l1), "Lente lejos OI", str(lejos)),
+                          (str(l1), "Lente cerca", str(cerca))])
+    orden = client.get("/ventas/1/orden").get_data(as_text=True)
+    assert orden.count("Receta · Gafas lejos") == 1 and orden.count("Receta · Gafas cerca") == 1
+    assert orden.count('<table class="graduacion">') == 2
+    assert "Para: <b>Lente lejos OD, Lente lejos OI</b>" in orden and "Para: <b>Lente cerca</b>" in orden
+    assert "Receta: <b>" not in orden  # ya no se repite debajo de cada producto
