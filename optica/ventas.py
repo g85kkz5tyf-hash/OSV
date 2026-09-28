@@ -55,6 +55,11 @@ def leer_pagos(form, campo_importe):
     return pagos
 
 
+def destino_seguro(volver, defecto):
+    """Solo se vuelve a páginas del propio programa."""
+    return volver if volver.startswith("/") and not volver.startswith("//") else defecto
+
+
 def contexto_ejecucion():
     return {"laboratorios": LABORATORIOS, "taller_propio": TALLER_PROPIO, "colores": COLORES_EJECUCION}
 
@@ -327,13 +332,14 @@ def orden(venta_id):
 @bp.route("/<int:venta_id>/pago", methods=["POST"])
 def pago(venta_id):
     venta = obtener_venta(venta_id)
+    volver = destino_seguro(request.form.get("volver", ""), url_for("ventas.detalle", venta_id=venta_id))
     if venta["estado"] == "Anulada":
         abort(400)
     try:
         pagos = leer_pagos(request.form, "importe")
     except ErrorVenta as e:
         flash(str(e), "error")
-        return redirect(url_for("ventas.detalle", venta_id=venta_id))
+        return redirect(volver)
     pendiente = venta["total"] - venta["pagado"]
     cobrado = sum(importe for importe, _ in pagos)
     if not pagos or cobrado > pendiente:
@@ -343,8 +349,9 @@ def pago(venta_id):
         for importe, metodo in pagos:
             db.execute("INSERT INTO pagos (venta_id, importe, metodo) VALUES (?, ?, ?)", (venta_id, importe, metodo))
         db.commit()
-        flash("Cobro registrado." if len(pagos) == 1 else f"{len(pagos)} cobros registrados.", "ok")
-    return redirect(url_for("ventas.detalle", venta_id=venta_id))
+        flash(("Cobro registrado" if len(pagos) == 1 else f"{len(pagos)} cobros registrados")
+              + f" en la venta {venta['numero']}.", "ok")
+    return redirect(volver)
 
 
 @bp.route("/<int:venta_id>/estado", methods=["POST"])
@@ -380,10 +387,7 @@ def cambiar_estado(venta_id):
     db.execute("UPDATE ventas SET estado = ? WHERE id = ?", (nuevo, venta_id))
     db.commit()
     flash(f"Venta {venta['numero']}: estado cambiado a «{nuevo}».", "ok")
-    volver = request.form.get("volver", "")
-    if not volver.startswith("/") or volver.startswith("//"):
-        volver = url_for("main.inicio")
-    return redirect(volver)
+    return redirect(destino_seguro(request.form.get("volver", ""), url_for("main.inicio")))
 
 
 @bp.route("/<int:venta_id>/anular", methods=["POST"])

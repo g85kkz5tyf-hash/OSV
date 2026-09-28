@@ -215,3 +215,7 @@ fieldset[hidden] { display: none; }
 .filas-cobro { display: grid; gap: 8px; margin-bottom: 8px; }
 .fila-cobro { display: grid; grid-template-columns: minmax(110px, 160px) minmax(140px, 220px) max-content; justify-content: start; gap: 8px; align-items: center; }
 .cobros .acciones { align-items: center; }
+
+/* Cobro rápido desde inicio */
+tr.fila-cobro-rapido td { background: #f5f9fd; }
+.boton-cobrar { margin-left: 6px; }

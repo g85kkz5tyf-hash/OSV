@@ -91,7 +91,7 @@ def inicio():
         "inicio.html", ventas_hoy=ventas_hoy, ventas_mes=ventas_mes, cobrado_hoy=cobrado_hoy,
         encargos=encargos, pendiente_cobro=pendiente_cobro, stock_bajo=stock_bajo,
         tareas=tareas, hoy=hoy.isoformat(),
-        estados=[e for e in ESTADOS_VENTA if e != "Anulada"],
+        estados=[e for e in ESTADOS_VENTA if e != "Anulada"], metodos=METODOS_PAGO,
     )
 
 

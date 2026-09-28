@@ -455,3 +455,18 @@ def test_tareas_pendientes_del_taller_propio(client):
     # al marcarla como lista, sale de las tareas
     client.post("/ventas/2/cambiar-estado", data={"estado": "Listo para recoger"})
     assert "Tareas pendientes (1)" in client.get("/").get_data(as_text=True)
+
+
+def test_cobro_rapido_desde_inicio(client, db):
+    vender(client, [{"descripcion": "Lentes", "precio": "5000"}], pago="1000", estado="En taller")
+    inicio = client.get("/").get_data(as_text=True)
+    assert 'class="peque boton-cobrar"' in inicio and 'id="cobro-1"' in inicio
+    r = client.post("/ventas/1/pago", data={"importe": ["3000", "1000"], "metodo": ["Efectivo", "Prestación"],
+                                             "volver": "/"})
+    assert r.status_code == 302 and r.headers["Location"] == "/"
+    assert db.execute("SELECT SUM(importe) FROM pagos").fetchone()[0] == 500000
+    # saldada: ya no aparece el botón
+    assert 'id="cobro-1"' not in client.get("/").get_data(as_text=True)
+    # si hay error también vuelve a inicio, y nunca a otra web
+    r = client.post("/ventas/1/pago", data={"importe": "1", "metodo": "Efectivo", "volver": "//malo.com"})
+    assert r.headers["Location"] == "/ventas/1"

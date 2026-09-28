@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros.html" import estado %}
+{% from "macros.html" import estado, filas_cobro %}
 {% block titulo %}Inicio{% endblock %}
 {% block contenido %}
 <h1>Resumen</h1>
@@ -54,8 +54,28 @@
             </select>
           </form>
         </td>
-        <td class="num">{{ (v.total - v.pagado)|moneda }}</td>
+        <td class="num">
+          {{ (v.total - v.pagado)|moneda }}
+          {% if v.total > v.pagado %}
+          <button type="button" class="peque boton-cobrar" data-fila="cobro-{{ v.id }}">Cobrar</button>
+          {% endif %}
+        </td>
       </tr>
+      {% if v.total > v.pagado %}
+      <tr id="cobro-{{ v.id }}" class="fila-cobro-rapido" hidden>
+        <td colspan="7">
+          <form method="post" action="{{ url_for('ventas.pago', venta_id=v.id) }}">
+            <input type="hidden" name="volver" value="{{ request.path }}">
+            <strong>Cobrar venta {{ v.numero }}{{ ' · ' ~ v.cliente_nombre if v.cliente_id }}</strong>
+            <div style="margin: 8px 0">{{ filas_cobro('importe', metodos, [((v.total - v.pagado)|importe, metodos[0])], v.total - v.pagado) }}</div>
+            <div class="acciones">
+              <button type="submit">Registrar cobro</button>
+              <button type="button" class="secundario cancelar-cobro" data-fila="cobro-{{ v.id }}">Cancelar</button>
+            </div>
+          </form>
+        </td>
+      </tr>
+      {% endif %}
     {% endfor %}
     </tbody>
   </table>
@@ -120,6 +140,15 @@
 
 {% block scripts %}
 <script>
+// Cobro rápido del saldo sin salir de inicio
+document.querySelectorAll(".boton-cobrar, .cancelar-cobro").forEach(boton => {
+  boton.addEventListener("click", () => {
+    const fila = document.getElementById(boton.dataset.fila);
+    fila.hidden = boton.classList.contains("cancelar-cobro") ? true : !fila.hidden;
+    if (!fila.hidden) fila.querySelector("input[name=importe]").focus();
+  });
+});
+
 // Cambiar el estado de un encargo directamente desde el desplegable
 document.querySelectorAll(".cambio-estado select").forEach(select => {
   select.addEventListener("change", () => {
