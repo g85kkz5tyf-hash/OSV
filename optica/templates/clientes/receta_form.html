@@ -142,7 +142,9 @@ for (const nombre of ["lc_curva_base", "lc_diametro"]) {
 
 // Al escribir la adición, ofrecer crear también la receta de cerca (una sola vez)
 let preguntadoCerca = false;
+// Solo para recetas de «Gafas lejos»
 function ofrecerRecetaCerca() {
+  if (campo("tipo").value !== "Gafas lejos") return;
   if (preguntadoCerca || !(campo("od_adicion").value.trim() || campo("oi_adicion").value.trim())) return;
   preguntadoCerca = true;
   if (confirm("¿Quieres generar también una nueva receta para gafas de cerca?\n\n" +
@@ -152,9 +154,15 @@ function ofrecerRecetaCerca() {
   }
 }
 for (const ojo of ["od", "oi"]) campo(`${ojo}_adicion`).addEventListener("change", ofrecerRecetaCerca);
-document.getElementById("no-cerca").addEventListener("click", () => {
+function cancelarRecetaCerca() {
   document.getElementById("generar_cerca").value = "";
   document.getElementById("aviso-cerca").hidden = true;
+}
+document.getElementById("no-cerca").addEventListener("click", cancelarRecetaCerca);
+// Si se cambia el tipo a otro distinto de «Gafas lejos», no se crea la de cerca
+campo("tipo").addEventListener("change", () => {
+  if (campo("tipo").value !== "Gafas lejos") cancelarRecetaCerca();
+  else { preguntadoCerca = false; ofrecerRecetaCerca(); }
 });
 
 // Formatear todo antes de guardar (por si se pulsa Intro sin salir del campo)

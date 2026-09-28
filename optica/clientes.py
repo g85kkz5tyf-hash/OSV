@@ -251,12 +251,15 @@ def formato_dioptrias(valor):
     return "-" + texto if valor < 0 else texto
 
 
+TIPO_LEJOS, TIPO_CERCA = "Gafas lejos", "Gafas cerca"
+
+
 def receta_de_cerca(datos):
     """Copia de la receta para gafas de cerca: esfera + adición en cada ojo y sin adición.
 
     Devuelve (datos, ojos_sin_calcular).
     """
-    cerca = dict(datos, tipo="Gafas cerca")
+    cerca = dict(datos, tipo=TIPO_CERCA)
     sin_calcular = []
     for ojo in ("od", "oi"):
         adicion_texto = datos[f"{ojo}_adicion"]
@@ -273,7 +276,8 @@ def receta_de_cerca(datos):
 
 def guardar_receta_de_cerca(db, cliente_id, datos):
     """Crea la receta de cerca si se pidió al escribir la adición. Devuelve el mensaje a mostrar."""
-    if request.form.get("generar_cerca") != "1" or not (datos["od_adicion"] or datos["oi_adicion"]):
+    if (request.form.get("generar_cerca") != "1" or datos["tipo"] != TIPO_LEJOS
+            or not (datos["od_adicion"] or datos["oi_adicion"])):
         return ""
     cerca, sin_calcular = receta_de_cerca(datos)
     columnas = list(cerca.keys())

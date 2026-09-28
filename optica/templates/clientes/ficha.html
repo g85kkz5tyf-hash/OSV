@@ -14,7 +14,7 @@
 <div class="tarjetas">
   <div class="tarjeta"><div class="etiqueta">Total comprado</div><div class="valor">{{ resumen.total_comprado|moneda }}</div><div class="detalle">{{ resumen.num_compras }} compra{{ 's' if resumen.num_compras != 1 }}</div></div>
   <div class="tarjeta"><div class="etiqueta">Pendiente de pago</div><div class="valor {{ 'aviso' if resumen.pendiente > 0 }}">{{ resumen.pendiente|moneda }}</div></div>
-  <div class="tarjeta"><div class="etiqueta">Última receta</div><div class="valor">{{ recetas[0].fecha|fecha if recetas else '—' }}</div><div class="detalle">{{ recetas[0].tipo if recetas }}</div></div>
+  <div class="tarjeta"><div class="etiqueta">Última receta</div><div class="valor">{{ recetas[0].fecha|fecha if recetas else '—' }}</div><div class="detalle">{{ recetas|selectattr('fecha', 'equalto', recetas[0].fecha)|map(attribute='tipo')|join(' + ') if recetas }}</div></div>
 </div>
 
 <div class="panel">
@@ -39,7 +39,7 @@
   {% for r in recetas %}
   <div class="receta-bloque">
     <div class="titulo">
-      <div><strong>{{ r.fecha|fecha }}</strong> · {{ r.tipo }}{% if r.optometrista %} · <span class="suave">{{ r.optometrista }}</span>{% endif %}{% if loop.first %} <span class="etiqueta-estado estado-Listo-para-recoger">Actual</span>{% endif %}</div>
+      <div><strong>{{ r.fecha|fecha }}</strong> · {{ r.tipo }}{% if r.optometrista %} · <span class="suave">{{ r.optometrista }}</span>{% endif %}{% if r.fecha == recetas[0].fecha %} <span class="etiqueta-estado estado-Listo-para-recoger">Actual</span>{% endif %}</div>
       <div class="acciones">
         <a class="boton secundario peque" href="{{ url_for('clientes.imprimir_receta', cliente_id=cliente.id, receta_id=r.id) }}" target="_blank">Imprimir</a>
         <a class="boton secundario peque" href="{{ url_for('clientes.editar_receta', cliente_id=cliente.id, receta_id=r.id) }}">Editar</a>

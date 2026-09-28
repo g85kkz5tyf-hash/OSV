@@ -616,7 +616,7 @@ def test_armazon_propio_no_se_duplica(tmp_path):
 def test_receta_de_cerca_automatica(client, db):
     cid = crear_cliente(client)
     r = client.post(f"/clientes/{cid}/recetas/nueva", data={
-        "fecha": "2026-09-20", "tipo": "Gafas progresivas", "optometrista": "Laura",
+        "fecha": "2026-09-20", "tipo": "Gafas lejos", "optometrista": "Laura",
         "od_esfera": "-1,75", "od_cilindro": "-0,50", "od_eje": "90", "od_adicion": "+2,00", "od_dnp": "31",
         "oi_esfera": "+0,50", "oi_cilindro": "", "oi_eje": "", "oi_adicion": "2,25", "oi_dnp": "30,5",
         "observaciones": "Control anual", "generar_cerca": "1",
@@ -625,7 +625,7 @@ def test_receta_de_cerca_automatica(client, db):
     recetas = db.execute("SELECT * FROM recetas ORDER BY id").fetchall()
     assert len(recetas) == 2
     cerca, lejos = recetas  # la escrita queda como la más reciente («Actual»)
-    assert lejos["tipo"] == "Gafas progresivas" and lejos["od_esfera"] == "-1,75" and lejos["od_adicion"] == "+2,00"
+    assert lejos["tipo"] == "Gafas lejos" and lejos["od_esfera"] == "-1,75" and lejos["od_adicion"] == "+2,00"
     assert cerca["tipo"] == "Gafas cerca"
     assert cerca["od_esfera"] == "+0,25" and cerca["oi_esfera"] == "+2,75"
     assert cerca["od_adicion"] == "" and cerca["oi_adicion"] == ""
@@ -637,14 +637,35 @@ def test_receta_de_cerca_automatica(client, db):
 def test_receta_de_cerca_casos(client, db):
     cid = crear_cliente(client)
     # sin marcar «generar_cerca» no se crea
-    client.post(f"/clientes/{cid}/recetas/nueva", data={"od_esfera": "-1,00", "od_adicion": "+1,00"})
+    client.post(f"/clientes/{cid}/recetas/nueva", data={"tipo": "Gafas lejos", "od_esfera": "-1,00", "od_adicion": "+1,00"})
     assert db.execute("SELECT COUNT(*) FROM recetas").fetchone()[0] == 1
     # esfera vacía o neutra = 0; esfera que queda en cero
     client.post(f"/clientes/{cid}/recetas/nueva", data={
-        "od_esfera": "", "od_adicion": "+1,50", "oi_esfera": "-1,00", "oi_adicion": "+1,00", "generar_cerca": "1"})
+        "tipo": "Gafas lejos", "od_esfera": "", "od_adicion": "+1,50", "oi_esfera": "-1,00", "oi_adicion": "+1,00", "generar_cerca": "1"})
     cerca = db.execute("SELECT * FROM recetas WHERE tipo = 'Gafas cerca' ORDER BY id DESC").fetchone()
     assert (cerca["od_esfera"], cerca["oi_esfera"]) == ("+1,50", "0,00")
     # texto que no es un número: se avisa y no se inventa
     r = client.post(f"/clientes/{cid}/recetas/nueva", data={
-        "od_esfera": "ver informe", "od_adicion": "+2,00", "generar_cerca": "1"}, follow_redirects=True)
+        "tipo": "Gafas lejos", "od_esfera": "ver informe", "od_adicion": "+2,00", "generar_cerca": "1"}, follow_redirects=True)
     assert "Revisa la esfera de OD" in r.get_data(as_text=True)
+
+
+
+def test_receta_de_cerca_solo_desde_gafas_lejos(client, db):
+    cid = crear_cliente(client)
+    for tipo in ["Gafas progresivas", "Gafas bifocales", "Gafas cerca", "Lentes de contacto"]:
+        client.post(f"/clientes/{cid}/recetas/nueva", data={
+            "tipo": tipo, "od_esfera": "-1,00", "od_adicion": "+2,00", "generar_cerca": "1"})
+    assert db.execute("SELECT COUNT(*) FROM recetas").fetchone()[0] == 4  # ninguna de cerca extra
+    assert db.execute("SELECT COUNT(*) FROM recetas WHERE tipo = 'Gafas cerca'").fetchone()[0] == 1
+
+
+def test_lejos_y_cerca_quedan_como_actuales(client, db):
+    cid = crear_cliente(client)
+    client.post(f"/clientes/{cid}/recetas/nueva", data={"fecha": "2025-01-10", "tipo": "Gafas lejos", "od_esfera": "-0,50"})
+    client.post(f"/clientes/{cid}/recetas/nueva", data={
+        "fecha": "2026-09-20", "tipo": "Gafas lejos", "od_esfera": "-1,00", "od_adicion": "+2,00", "generar_cerca": "1"})
+    ficha = client.get(f"/clientes/{cid}").get_data(as_text=True)
+    recetas = ficha.split('id="recetas"', 1)[1].split('id="compras"', 1)[0]
+    assert recetas.count(">Actual</span>") == 2  # lejos y cerca de la última visita, no la de 2025
+    assert "Gafas lejos + Gafas cerca" in ficha
