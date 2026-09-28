@@ -49,7 +49,7 @@ marca la casilla *"Add Python to PATH"* al instalar).
 - **Mac:** doble clic en `iniciar-mac.command` (la primera vez: clic derecho → Abrir).
 
 La primera vez tarda un poco porque instala lo necesario. Después se abre el navegador en
-<http://127.0.0.1:5000>. Deja abierta la ventana negra mientras uses el programa.
+<http://127.0.0.1:8765>. Deja abierta la ventana negra mientras uses el programa.
 
 Lo primero es ir a **Configuración** y poner el nombre, NIF y dirección de la óptica, que
 aparecerán en los tickets y en las recetas impresas.

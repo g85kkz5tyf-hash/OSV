@@ -11,7 +11,15 @@ from .db import get_config, get_db, set_config
 
 bp = Blueprint("main", __name__)
 
+MARCA_ESTADO = "gestion-optica-ok"
+
 CAMPOS_CONFIG = ["nombre", "nif", "direccion", "telefono", "email", "pie_ticket"]
+
+
+@bp.route("/estado")
+def estado():
+    """Permite al lanzador comprobar que en el puerto está este programa y no otro."""
+    return MARCA_ESTADO
 
 
 @bp.route("/")

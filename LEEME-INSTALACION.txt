@@ -48,6 +48,12 @@ Truco (Windows): crea un acceso directo en el escritorio con clic derecho
 sobre el archivo > "Enviar a" > "Escritorio (crear acceso directo)".
 
 
+SI EL NAVEGADOR NO SE ABRE O SALE EN BLANCO
+-------------------------------------------
+Mira la ventana negra: indica la dirección del programa, normalmente
+http://127.0.0.1:8765 . Escríbela en la barra de direcciones del navegador.
+
+
 PRIMERA VEZ QUE LO USES
 -----------------------
 Entra en "Configuración" y escribe el nombre, NIF, dirección y teléfono de
