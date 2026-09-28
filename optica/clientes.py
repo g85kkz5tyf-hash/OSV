@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal, InvalidOperation
 
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
 
@@ -166,6 +167,8 @@ def nueva_receta(cliente_id):
     if request.method == "POST":
         datos = datos_receta_formulario()
         db = get_db()
+        # La de cerca se guarda antes para que la receta escrita quede como la actual
+        extra = guardar_receta_de_cerca(db, cliente_id, datos)
         columnas = list(datos.keys())
         db.execute(
             f"INSERT INTO recetas (cliente_id, {', '.join(columnas)}) "
@@ -173,7 +176,7 @@ def nueva_receta(cliente_id):
             [cliente_id, *datos.values()],
         )
         db.commit()
-        flash("Receta guardada.", "ok")
+        flash("Receta guardada." + extra, "ok")
         return redirect(url_for("clientes.ficha", cliente_id=cliente_id) + "#recetas")
     receta = {"fecha": date.today().isoformat(), "tipo": TIPOS_RECETA[0]}
     # Proponer la última optometrista usada para agilizar
@@ -197,8 +200,9 @@ def editar_receta(cliente_id, receta_id):
             f"UPDATE recetas SET {', '.join(f'{c} = ?' for c in datos)} WHERE id = ?",
             [*datos.values(), receta_id],
         )
+        extra = guardar_receta_de_cerca(db, cliente_id, datos)
         db.commit()
-        flash("Receta actualizada.", "ok")
+        flash("Receta actualizada." + extra, "ok")
         return redirect(url_for("clientes.ficha", cliente_id=cliente_id) + "#recetas")
     return render_template(
         "clientes/receta_form.html", cliente=cliente, receta=receta,
@@ -226,6 +230,61 @@ def eliminar_receta(cliente_id, receta_id):
         db.commit()
         flash("Receta eliminada.", "ok")
     return redirect(url_for("clientes.ficha", cliente_id=cliente_id) + "#recetas")
+
+
+def a_numero(texto):
+    """'+1,50' -> Decimal('1.50'); vacío o «neutro» -> 0; None si no es un número."""
+    t = (texto or "").strip().lower().replace(",", ".")
+    if t in ("", "n", "neutro", "plano", "pl"):
+        return Decimal(0)
+    try:
+        return Decimal(t)
+    except InvalidOperation:
+        return None
+
+
+def formato_dioptrias(valor):
+    """Decimal('1.5') -> '+1,50'; 0 -> '0,00'; negativo -> '-2,00'."""
+    texto = f"{abs(valor):.2f}".replace(".", ",")
+    if valor > 0:
+        return "+" + texto
+    return "-" + texto if valor < 0 else texto
+
+
+def receta_de_cerca(datos):
+    """Copia de la receta para gafas de cerca: esfera + adición en cada ojo y sin adición.
+
+    Devuelve (datos, ojos_sin_calcular).
+    """
+    cerca = dict(datos, tipo="Gafas cerca")
+    sin_calcular = []
+    for ojo in ("od", "oi"):
+        adicion_texto = datos[f"{ojo}_adicion"]
+        if not adicion_texto:
+            continue
+        esfera, adicion = a_numero(datos[f"{ojo}_esfera"]), a_numero(adicion_texto)
+        if esfera is None or adicion is None:
+            sin_calcular.append(ojo.upper())
+            continue
+        cerca[f"{ojo}_esfera"] = formato_dioptrias(esfera + adicion)
+        cerca[f"{ojo}_adicion"] = ""
+    return cerca, sin_calcular
+
+
+def guardar_receta_de_cerca(db, cliente_id, datos):
+    """Crea la receta de cerca si se pidió al escribir la adición. Devuelve el mensaje a mostrar."""
+    if request.form.get("generar_cerca") != "1" or not (datos["od_adicion"] or datos["oi_adicion"]):
+        return ""
+    cerca, sin_calcular = receta_de_cerca(datos)
+    columnas = list(cerca.keys())
+    db.execute(
+        f"INSERT INTO recetas (cliente_id, {', '.join(columnas)}) VALUES (?, {', '.join('?' * len(columnas))})",
+        [cliente_id, *cerca.values()],
+    )
+    mensaje = " También se creó la receta para gafas de cerca (esfera + adición)."
+    if sin_calcular:
+        mensaje += f" Revisa la esfera de {' y '.join(sin_calcular)}: no se pudo sumar la adición."
+    return mensaje
 
 
 def datos_receta_formulario():

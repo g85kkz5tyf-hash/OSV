@@ -58,6 +58,12 @@
     </div>
   </div>
 
+  <input type="hidden" name="generar_cerca" id="generar_cerca" value="">
+  <div class="mensaje ok" id="aviso-cerca" hidden>
+    Al guardar se creará también una <strong>receta para gafas de cerca</strong> con la adición sumada a la esfera.
+    <button type="button" class="secundario peque" id="no-cerca">No crearla</button>
+  </div>
+
   <div class="acciones">
     <button type="submit">Guardar receta</button>
     <a class="boton secundario" href="{{ url_for('clientes.ficha', cliente_id=cliente.id) }}">Cancelar</a>
@@ -133,6 +139,23 @@ for (const nombre of COPIAR_AL_OTRO_OJO) {
 for (const nombre of ["lc_curva_base", "lc_diametro"]) {
   campo(nombre).addEventListener("change", e => e.target.value = formatear(e.target.value, ""));
 }
+
+// Al escribir la adición, ofrecer crear también la receta de cerca (una sola vez)
+let preguntadoCerca = false;
+function ofrecerRecetaCerca() {
+  if (preguntadoCerca || !(campo("od_adicion").value.trim() || campo("oi_adicion").value.trim())) return;
+  preguntadoCerca = true;
+  if (confirm("¿Quieres generar también una nueva receta para gafas de cerca?\n\n" +
+              "Será igual a esta, pero con la adición sumada a la esfera de cada ojo.")) {
+    document.getElementById("generar_cerca").value = "1";
+    document.getElementById("aviso-cerca").hidden = false;
+  }
+}
+for (const ojo of ["od", "oi"]) campo(`${ojo}_adicion`).addEventListener("change", ofrecerRecetaCerca);
+document.getElementById("no-cerca").addEventListener("click", () => {
+  document.getElementById("generar_cerca").value = "";
+  document.getElementById("aviso-cerca").hidden = true;
+});
 
 // Formatear todo antes de guardar (por si se pulsa Intro sin salir del campo)
 form.addEventListener("submit", () => {
