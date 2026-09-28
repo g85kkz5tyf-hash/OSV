@@ -92,6 +92,7 @@
           {% if l.categoria == armazon %}
           <div class="medidas-armazon">
             {% for nombre, _, inicial in medidas %}<span><b>{{ inicial|lower }}</b> {{ l[nombre] or '____' }}</span>{% endfor %}
+            {% if l.ranurado %}<span><b>RANURADO</b></span>{% endif %}
           </div>
           {% endif %}
         </td>

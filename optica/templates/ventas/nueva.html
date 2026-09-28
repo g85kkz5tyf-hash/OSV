@@ -89,6 +89,8 @@
         {% for nombre, etiqueta, inicial in medidas %}
         <label>{{ inicial|lower }} <input name="medida_{{ nombre }}" inputmode="decimal" title="{{ etiqueta }}" aria-label="{{ etiqueta }}"></label>
         {% endfor %}
+        <input type="hidden" name="medida_ranurado" value="">
+        <label class="ranurado"><input type="checkbox" class="check-ranurado"> Ranurado <span class="suave">({{ precio_ranurado|moneda }})</span></label>
       </div>
     </td>
     <td><input name="cantidad" type="number" min="1" step="1" value="1" required></td>
@@ -110,6 +112,7 @@
 const URL_PRODUCTOS = "{{ url_for('productos.api_buscar') }}";
 const URL_CLIENTES = "{{ url_for('clientes.api_buscar') }}";
 const URL_RECETAS = "{{ url_for('clientes.api_recetas', cliente_id=0) }}".replace("/0/", "/{id}/");
+const PRECIO_RANURADO = {{ precio_ranurado }};
 const IVA_DEFECTO = {{ tipos_iva[0] }};
 const LINEAS_PREVIAS = {{ lineas|tojson }};
 
@@ -172,6 +175,15 @@ function anadirLinea(datos = {}) {
     for (const campo of ["calibre", "puente", "diagonal", "altura"]) {
       $(`[name=medida_${campo}]`, tr).value = datos[campo] || "";
     }
+    // Ranurado: el precio de la línea pasa a ser el del ranurado (o 0 si se desmarca)
+    const check = $(".check-ranurado", tr), oculto = $("[name=medida_ranurado]", tr);
+    oculto.value = datos.ranurado ? "1" : "";
+    check.checked = !!datos.ranurado;
+    check.addEventListener("change", () => {
+      oculto.value = check.checked ? "1" : "";
+      $("[name=precio]", tr).value = importeTexto(check.checked ? PRECIO_RANURADO : 0);
+      recalcular();
+    });
   }
   tr.addEventListener("input", recalcular);
   $(".quitar", tr).addEventListener("click", () => { tr.remove(); recalcular(); });

@@ -596,7 +596,7 @@ def test_armazon_propio_con_medidas_en_la_orden(client, db):
 
     # completar la diagonal desde la ficha de la venta
     linea_id = db.execute("SELECT id FROM lineas_venta ORDER BY id").fetchone()[0]
-    assert "Guardar medidas" in client.get("/ventas/1").get_data(as_text=True)
+    assert 'name="ranurado"' in client.get("/ventas/1").get_data(as_text=True)
     client.post(f"/ventas/1/medidas/{linea_id}", data={"calibre": "52", "puente": "18", "diagonal": "54", "altura": "38"})
     assert "<b>d</b> 54" in client.get("/ventas/1/orden").get_data(as_text=True)
     # la línea de cristales no admite medidas
@@ -669,3 +669,42 @@ def test_lejos_y_cerca_quedan_como_actuales(client, db):
     recetas = ficha.split('id="recetas"', 1)[1].split('id="compras"', 1)[0]
     assert recetas.count(">Actual</span>") == 2  # lejos y cerca de la última visita, no la de 2025
     assert "Gafas lejos + Gafas cerca" in ficha
+
+
+def test_armazon_propio_ranurado(client, db):
+    propio = db.execute("SELECT id FROM productos WHERE codigo = 'ARMAZON-PROPIO'").fetchone()["id"]
+    cid = crear_cliente(client)
+    base = {
+        "cliente_id": str(cid), "producto_id": [str(propio), ""],
+        "descripcion": ["Armazón propio", "Cristales"], "cantidad": ["1", "1"],
+        "precio": ["250", "3000"], "descuento": ["0", "0"], "iva": ["22", "22"],
+        "medida_calibre": ["52", ""], "medida_puente": ["18", ""], "medida_diagonal": ["", ""],
+        "medida_altura": ["", ""], "medida_ranurado": ["1", "1"], "estado": "En taller", "pago": "", "metodo": "Efectivo",
+    }
+    assert client.post("/ventas/nueva", data=base).status_code == 302
+    lineas = db.execute("SELECT ranurado, importe FROM lineas_venta ORDER BY id").fetchall()
+    assert tuple(lineas[0]) == ("1", 25000) and lineas[1]["ranurado"] == ""  # solo en el armazón propio
+    assert db.execute("SELECT total FROM ventas").fetchone()[0] == 325000
+    assert "<b>RANURADO</b>" in client.get("/ventas/1/orden").get_data(as_text=True)
+
+    # desmarcar desde la ficha: la línea vuelve a $ 0 y baja el total
+    linea = db.execute("SELECT id FROM lineas_venta ORDER BY id").fetchone()["id"]
+    client.post(f"/ventas/1/medidas/{linea}", data={"calibre": "52", "puente": "18"})
+    assert tuple(db.execute("SELECT ranurado, precio_unitario, importe FROM lineas_venta WHERE id = ?", (linea,)).fetchone()) == ("", 0, 0)
+    assert db.execute("SELECT total FROM ventas").fetchone()[0] == 300000
+    assert "RANURADO" not in client.get("/ventas/1/orden").get_data(as_text=True)
+    # volver a marcarlo lo sube de nuevo
+    client.post(f"/ventas/1/medidas/{linea}", data={"calibre": "52", "ranurado": "1"})
+    assert db.execute("SELECT total FROM ventas").fetchone()[0] == 325000
+
+
+def test_no_se_quita_ranurado_ya_cobrado(client, db):
+    propio = db.execute("SELECT id FROM productos WHERE codigo = 'ARMAZON-PROPIO'").fetchone()["id"]
+    client.post("/ventas/nueva", data={
+        "producto_id": [str(propio)], "descripcion": ["Armazón propio"], "cantidad": ["1"], "precio": ["250"],
+        "descuento": ["0"], "iva": ["22"], "medida_calibre": [""], "medida_puente": [""], "medida_diagonal": [""],
+        "medida_altura": [""], "medida_ranurado": ["1"], "estado": "En taller", "pago": "250", "metodo": "Efectivo"})
+    linea = db.execute("SELECT id FROM lineas_venta").fetchone()["id"]
+    r = client.post(f"/ventas/1/medidas/{linea}", data={}, follow_redirects=True)
+    assert "No se puede quitar el ranurado" in r.get_data(as_text=True)
+    assert db.execute("SELECT ranurado FROM lineas_venta").fetchone()[0] == "1"

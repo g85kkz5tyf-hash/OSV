@@ -232,3 +232,5 @@ tr.fila-cobro-rapido td { background: #f5f9fd; }
 .medidas-linea label { display: flex; align-items: center; gap: 4px; margin: 0; font-weight: 700; color: var(--texto); }
 .medidas-linea input { width: 64px; padding: 4px 6px; }
 .medidas-linea[hidden] { display: none; }
+.medidas-linea label.ranurado { font-weight: 600; margin-left: 6px; }
+.medidas-linea label.ranurado input { width: auto; }

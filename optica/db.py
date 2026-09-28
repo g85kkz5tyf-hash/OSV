@@ -36,7 +36,7 @@ def init_db(path):
     nuevas_columnas = {
         "productos": ["calibre", "puente", "diagonal", "altura"],
         "ventas": ["ejecucion", "numero_trabajo"],  # taller o laboratorio, y nº del laboratorio
-        "lineas_venta": ["calibre", "puente", "diagonal", "altura"],  # armazón propio del cliente
+        "lineas_venta": ["calibre", "puente", "diagonal", "altura", "ranurado"],  # armazón propio
     }
     for tabla, nuevas in nuevas_columnas.items():
         columnas = {fila[1] for fila in conn.execute(f"PRAGMA table_info({tabla})")}

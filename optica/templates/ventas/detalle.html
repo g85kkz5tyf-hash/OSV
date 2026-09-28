@@ -42,7 +42,8 @@
             {% for nombre, etiqueta, inicial in medidas %}
             <label>{{ inicial|lower }} <input name="{{ nombre }}" value="{{ l[nombre] }}" inputmode="decimal" title="{{ etiqueta }}" aria-label="{{ etiqueta }}"></label>
             {% endfor %}
-            <button class="secundario peque">Guardar medidas</button>
+            <label class="ranurado"><input type="checkbox" name="ranurado" value="1" {{ 'checked' if l.ranurado }}> Ranurado <span class="suave">({{ precio_ranurado|moneda }})</span></label>
+            <button class="secundario peque">Guardar</button>
           </form>
           {% endif %}
         </td>

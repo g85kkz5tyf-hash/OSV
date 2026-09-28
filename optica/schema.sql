@@ -114,7 +114,8 @@ CREATE TABLE IF NOT EXISTS lineas_venta (
     calibre TEXT NOT NULL DEFAULT '',
     puente TEXT NOT NULL DEFAULT '',
     diagonal TEXT NOT NULL DEFAULT '',
-    altura TEXT NOT NULL DEFAULT ''
+    altura TEXT NOT NULL DEFAULT '',
+    ranurado TEXT NOT NULL DEFAULT '' -- '1' si el armazón propio va ranurado
 );
 
 CREATE TABLE IF NOT EXISTS pagos (

@@ -59,3 +59,4 @@ COLORES_EJECUCION = {
 
 # Producto especial para cuando el cliente trae su propio armazón (solo compra cristales)
 CODIGO_ARMAZON_PROPIO = "ARMAZON-PROPIO"
+PRECIO_RANURADO = 25000  # $ 250 (en centésimos) si el armazón propio va ranurado
