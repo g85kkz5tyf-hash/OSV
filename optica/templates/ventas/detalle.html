@@ -109,6 +109,25 @@
       </div>
       <div><button type="submit">Guardar</button></div>
     </form>
+
+    <h3>Aviso al cliente por SMS</h3>
+    {% for a in avisos %}
+      <p class="{{ 'suave' if a.enviado else 'alerta' }}" style="margin: 4px 0">
+        {{ a.fecha|fecha }} ·
+        {% if a.enviado %}SMS enviado a {{ a.telefono }}{% else %}No se pudo enviar: {{ a.error }}{% endif %}
+      </p>
+    {% else %}
+      <p class="suave" style="margin: 4px 0">
+        {% if sms_configurado %}Se enviará un SMS automáticamente al pasar a «Listo para recoger».
+        {% else %}El envío de SMS no está configurado. <a href="{{ url_for('main.configuracion') }}#sms">Configurarlo</a>{% endif %}
+      </p>
+    {% endfor %}
+    {% if sms_configurado %}
+    <form method="post" action="{{ url_for('ventas.avisar', venta_id=venta.id) }}" style="margin-top: 8px"
+          onsubmit="return confirm('¿Enviar ahora el SMS de «listo para retirar» al cliente?')">
+      <button class="secundario peque">{{ 'Reenviar SMS' if avisos else 'Enviar SMS ahora' }}</button>
+    </form>
+    {% endif %}
     {% else %}
       {% if venta.notas %}<p style="white-space: pre-line">{{ venta.notas }}</p>{% endif %}
       <p class="suave">Esta venta está anulada.</p>

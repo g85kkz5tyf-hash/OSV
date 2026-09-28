@@ -5,9 +5,12 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, u
 from .constantes import CAMPOS_OJO, CATEGORIA_ARMAZON, MEDIDAS_ARMAZON, ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO, TIPOS_IVA
 from .db import get_config, get_db
 from .productos import nombre_producto, registrar_movimiento
-from .utils import desglose_iva, importe_linea, parse_entero, parse_importe
+from . import sms
+from .utils import desglose_iva, formato_moneda, importe_linea, parse_entero, parse_importe
 
 bp = Blueprint("ventas", __name__, url_prefix="/ventas")
+
+ESTADO_LISTO = "Listo para recoger"
 
 SQL_VENTAS = """
     SELECT v.*,
@@ -239,6 +242,7 @@ def detalle(venta_id):
     venta = obtener_venta(venta_id)
     lineas = db.execute("SELECT * FROM lineas_venta WHERE venta_id = ? ORDER BY id", (venta_id,)).fetchall()
     pagos = db.execute("SELECT * FROM pagos WHERE venta_id = ? ORDER BY id", (venta_id,)).fetchall()
+    avisos = db.execute("SELECT * FROM avisos WHERE venta_id = ? ORDER BY id", (venta_id,)).fetchall()
     cliente = receta = None
     if venta["cliente_id"]:
         cliente = db.execute("SELECT * FROM clientes WHERE id = ?", (venta["cliente_id"],)).fetchone()
@@ -247,7 +251,8 @@ def detalle(venta_id):
     return render_template(
         "ventas/detalle.html", venta=venta, lineas=lineas, pagos=pagos, cliente=cliente,
         receta=receta, estados=[e for e in ESTADOS_VENTA if e != "Anulada"], metodos=METODOS_PAGO,
-        desglose=desglose_iva(lineas), campos_ojo=CAMPOS_OJO,
+        desglose=desglose_iva(lineas), campos_ojo=CAMPOS_OJO, avisos=avisos,
+        sms_configurado=sms.configurado(get_config(db)),
     )
 
 
@@ -327,6 +332,8 @@ def estado(venta_id):
     )
     db.commit()
     flash("Venta actualizada.", "ok")
+    if nuevo == ESTADO_LISTO and venta["estado"] != ESTADO_LISTO:
+        avisar_cliente(venta_id)
     return redirect(url_for("ventas.detalle", venta_id=venta_id))
 
 
@@ -341,10 +348,57 @@ def cambiar_estado(venta_id):
     db.execute("UPDATE ventas SET estado = ? WHERE id = ?", (nuevo, venta_id))
     db.commit()
     flash(f"Venta {venta['numero']}: estado cambiado a «{nuevo}».", "ok")
+    if nuevo == ESTADO_LISTO and venta["estado"] != ESTADO_LISTO:
+        avisar_cliente(venta_id)
     volver = request.form.get("volver", "")
     if not volver.startswith("/") or volver.startswith("//"):
         volver = url_for("main.inicio")
     return redirect(volver)
+
+
+def avisar_cliente(venta_id, reenviar=False):
+    """Envía al cliente el SMS de «listo para recoger» y deja constancia del resultado."""
+    db = get_db()
+    venta = obtener_venta(venta_id)
+    if not reenviar and db.execute(
+        "SELECT 1 FROM avisos WHERE venta_id = ? AND enviado = 1", (venta_id,)
+    ).fetchone():
+        return  # ya se le avisó antes: no repetir el SMS
+    config = get_config(db)
+    if not reenviar and not config.get("sms_activo"):
+        return
+    cliente = None
+    if venta["cliente_id"]:
+        cliente = db.execute("SELECT * FROM clientes WHERE id = ?", (venta["cliente_id"],)).fetchone()
+    if not cliente or not cliente["telefono"]:
+        flash("No se envió el SMS: la venta no tiene un cliente con teléfono.", "error")
+        return
+    saldo = formato_moneda(max(venta["total"] - venta["pagado"], 0))
+    mensaje = sms.componer_mensaje(config, cliente, venta, saldo)
+    try:
+        destino = sms.enviar(config, cliente["telefono"], mensaje)
+    except sms.ErrorSMS as e:
+        db.execute(
+            "INSERT INTO avisos (venta_id, telefono, mensaje, enviado, error) VALUES (?, ?, ?, 0, ?)",
+            (venta_id, cliente["telefono"], mensaje, str(e)),
+        )
+        db.commit()
+        flash(f"No se pudo enviar el SMS al cliente: {e}.", "error")
+        return
+    db.execute(
+        "INSERT INTO avisos (venta_id, telefono, mensaje, enviado) VALUES (?, ?, ?, 1)",
+        (venta_id, destino, mensaje),
+    )
+    db.commit()
+    flash(f"SMS enviado a {cliente['nombre']} ({cliente['telefono']}): «{mensaje}»", "ok")
+
+
+@bp.route("/<int:venta_id>/avisar", methods=["POST"])
+def avisar(venta_id):
+    """Enviar (o reenviar) a mano el SMS de «listo para recoger»."""
+    obtener_venta(venta_id)
+    avisar_cliente(venta_id, reenviar=True)
+    return redirect(url_for("ventas.detalle", venta_id=venta_id))
 
 
 @bp.route("/<int:venta_id>/anular", methods=["POST"])

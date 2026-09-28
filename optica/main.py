@@ -9,6 +9,7 @@ from flask import (Blueprint, abort, current_app, flash, redirect, render_templa
                    send_file, url_for)
 
 from .constantes import ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO
+from . import sms
 from .db import get_config, get_db, set_config
 
 bp = Blueprint("main", __name__)
@@ -16,6 +17,7 @@ bp = Blueprint("main", __name__)
 MARCA_ESTADO = "gestion-optica-ok"
 
 CAMPOS_CONFIG = ["nombre", "nif", "direccion", "telefono", "email", "pie_ticket"]
+CAMPOS_SMS = ["sms_activo", "sms_sid", "sms_token", "sms_remitente", "sms_mensaje"]
 
 
 @bp.route("/estado")
@@ -171,11 +173,27 @@ def informes():
 def configuracion():
     db = get_db()
     if request.method == "POST":
-        set_config(db, {c: request.form.get(c, "").strip() for c in CAMPOS_CONFIG})
+        campos = CAMPOS_SMS if request.form.get("seccion") == "sms" else CAMPOS_CONFIG
+        set_config(db, {c: request.form.get(c, "").strip() for c in campos})
         db.commit()
         flash("Configuración guardada.", "ok")
-        return redirect(url_for("main.configuracion"))
-    return render_template("configuracion.html", config=get_config(db))
+        return redirect(url_for("main.configuracion") + ("#sms" if campos is CAMPOS_SMS else ""))
+    return render_template(
+        "configuracion.html", config=get_config(db), mensaje_por_defecto=sms.MENSAJE_POR_DEFECTO,
+    )
+
+
+@bp.route("/configuracion/sms-prueba", methods=["POST"])
+def sms_prueba():
+    config = get_config(get_db())
+    telefono = request.form.get("telefono", "").strip()
+    mensaje = f"Mensaje de prueba de {config.get('nombre') or 'la óptica'}: el envío de SMS funciona."
+    try:
+        destino = sms.enviar(config, telefono, mensaje)
+        flash(f"SMS de prueba enviado a {destino}. Revisa el teléfono.", "ok")
+    except sms.ErrorSMS as e:
+        flash(f"No se pudo enviar el SMS de prueba: {e}.", "error")
+    return redirect(url_for("main.configuracion") + "#sms")
 
 
 @bp.route("/copia-seguridad")
