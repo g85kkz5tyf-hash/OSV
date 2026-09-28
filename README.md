@@ -16,7 +16,7 @@ todos los datos quedan guardados en un único archivo (`datos/optica.db`).
 - Historial de compras con lo pendiente de pago.
 
 **Stock**
-- Productos por categoría (armazones con calibre, puente, diagonal y altura, lentes de sol, lentes oftálmicas, lentes de contacto,
+- Productos por categoría (armazones con calibre, puente, diagonal y altura, lentes de sol, cristales, lentes de contacto,
   líquidos, accesorios, servicios), con precio de coste y precio de venta en pesos uruguayos.
 - Entradas de mercancía y ajustes por recuento, con el historial de movimientos.
 - Aviso de stock bajo, valor del inventario y exportación a Excel (CSV).

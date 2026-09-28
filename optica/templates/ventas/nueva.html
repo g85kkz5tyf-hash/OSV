@@ -39,7 +39,7 @@
       <tbody id="lineas"></tbody>
     </table>
     </div>
-    <p><button type="button" class="secundario peque" id="linea-libre">+ Línea libre (servicio, lente por encargo…)</button></p>
+    <p><button type="button" class="secundario peque" id="linea-libre">+ Línea libre (servicio, cristales por encargo…)</button></p>
     <div class="totales">Total: <span id="total">$ 0,00</span></div>
   </div>
 
@@ -83,7 +83,7 @@
       <input name="descripcion" required>
       <small class="suave info"></small>
       <div class="receta-linea" hidden>
-        <label>Receta de esta lente
+        <label>Receta de estos cristales
           <select name="linea_receta"><option value="">— Elige la receta —</option></select>
         </label>
       </div>
@@ -165,7 +165,7 @@ function anadirLinea(datos = {}) {
   if (datos.descuento) $("[name=descuento]", tr).value = datos.descuento;
   if (datos.producto_id) $(".info", tr).textContent = datos.info || "";
   if (datos.categoria === CATEGORIA_LENTE) {
-    // Lente oftálmica: si la venta tiene varias recetas, se elige a cuál corresponde
+    // Cristales: si la venta tiene varias recetas, se elige a cuál corresponde
     tr.dataset.lente = "1";
     tr.dataset.receta = datos.linea_receta || "";
   }

@@ -32,6 +32,9 @@ def init_db(path):
     # «Gafas» pasó a llamarse «Lentes»
     conn.execute("UPDATE recetas SET tipo = 'Lentes' || substr(tipo, 6) WHERE tipo LIKE 'Gafas %'")
     conn.execute("UPDATE productos SET categoria = 'Lentes de sol' WHERE categoria = 'Gafa de sol'")
+    # «Progresivas» pasó a «Multifocales» y «Lente oftálmica» a «Cristales»
+    conn.execute("UPDATE recetas SET tipo = 'Lentes multifocales' WHERE tipo = 'Lentes progresivas'")
+    conn.execute("UPDATE productos SET categoria = 'Cristales' WHERE categoria = 'Lente oftálmica'")
     # «Montura» pasó a llamarse «Armazón», con sus medidas
     conn.execute("UPDATE productos SET categoria = 'Armazón' WHERE categoria = 'Montura'")
     nuevas_columnas = {

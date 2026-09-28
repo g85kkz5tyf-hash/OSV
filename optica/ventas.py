@@ -153,7 +153,7 @@ def es_armazon_propio(producto):
 def leer_lineas_formulario(db, receta_ids=()):
     """Lee las líneas enviadas por el formulario y las valida contra el stock.
 
-    receta_ids: recetas asociadas a la venta. Cada lente oftálmica queda ligada a una de ellas.
+    receta_ids: recetas asociadas a la venta. Cada producto de cristales queda ligado a una de ellas.
     """
     f = request.form
     recetas_linea = f.getlist("linea_receta")

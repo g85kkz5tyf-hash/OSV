@@ -1,5 +1,5 @@
 CATEGORIA_ARMAZON = "Armazón"
-CATEGORIA_LENTE = "Lente oftálmica"
+CATEGORIA_LENTE = "Cristales"
 
 CATEGORIAS = [
     CATEGORIA_ARMAZON,
@@ -14,7 +14,7 @@ CATEGORIAS = [
 TIPOS_RECETA = [
     "Lentes lejos",
     "Lentes cerca",
-    "Lentes progresivas",
+    "Lentes multifocales",
     "Lentes bifocales",
     "Lentes ocupacionales",
     "Lentes de contacto",

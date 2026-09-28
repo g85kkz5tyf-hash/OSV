@@ -95,7 +95,7 @@ def test_paginas_cargan(client, url):
 def test_ficha_cliente_con_receta_y_compras(client):
     cid = crear_cliente(client)
     r = client.post(f"/clientes/{cid}/recetas/nueva", data={
-        "fecha": "2026-09-01", "tipo": "Lentes progresivas", "optometrista": "Laura",
+        "fecha": "2026-09-01", "tipo": "Lentes multifocales", "optometrista": "Laura",
         "od_esfera": "-1,75", "od_cilindro": "-0,50", "od_eje": "90", "od_adicion": "+2,00",
         "oi_esfera": "-2,00", "oi_cilindro": "-0,75", "oi_eje": "85", "oi_adicion": "+2,00",
         "proxima_revision": "2027-09-01",
@@ -107,7 +107,7 @@ def test_ficha_cliente_con_receta_y_compras(client):
 
     ficha = client.get(f"/clientes/{cid}").get_data(as_text=True)
     assert "Ana García López" in ficha
-    assert "-1,75" in ficha and "Lentes progresivas" in ficha
+    assert "-1,75" in ficha and "Lentes multifocales" in ficha
     assert "Ray-Ban RB5154" in ficha  # historial de compras
     assert "$ 120,00" in ficha
 
@@ -167,7 +167,7 @@ def test_venta_descuenta_stock_y_registra_pago(client, db):
     pid = crear_producto(client, stock="5")
     r = vender(client, [
         {"producto_id": str(pid), "descripcion": "Ray-Ban", "cantidad": "2", "precio": "120,00", "descuento": "10"},
-        {"descripcion": "Lentes progresivas a medida", "precio": "300", "iva": "10"},
+        {"descripcion": "Lentes multifocales a medida", "precio": "300", "iva": "10"},
     ], pago="100", estado="En taller")
     assert r.status_code == 302
     venta = db.execute("SELECT * FROM ventas").fetchone()
@@ -637,7 +637,7 @@ def test_receta_de_cerca_casos(client, db):
 
 def test_receta_de_cerca_solo_desde_lentes_lejos(client, db):
     cid = crear_cliente(client)
-    for tipo in ["Lentes progresivas", "Lentes bifocales", "Lentes cerca", "Lentes de contacto"]:
+    for tipo in ["Lentes multifocales", "Lentes bifocales", "Lentes cerca", "Lentes de contacto"]:
         client.post(f"/clientes/{cid}/recetas/nueva", data={
             "tipo": tipo, "od_esfera": "-1,00", "od_adicion": "+2,00", "generar_cerca": "1"})
     assert db.execute("SELECT COUNT(*) FROM recetas").fetchone()[0] == 4  # ninguna de cerca extra
@@ -695,7 +695,7 @@ def test_no_se_quita_ranurado_ya_cobrado(client, db):
 
 
 def crear_lente(client, codigo="LEN1", descripcion="Monofocal 1.6"):
-    r = client.post("/productos/nuevo", data={"codigo": codigo, "categoria": "Lente oftálmica",
+    r = client.post("/productos/nuevo", data={"codigo": codigo, "categoria": "Cristales",
                                               "descripcion": descripcion, "precio_venta": "3000", "iva": "22"})
     return int(r.headers["Location"].rstrip("/").split("/")[-1])
 
@@ -823,7 +823,7 @@ def test_migracion_gafas_a_lentes(tmp_path):
     conn.execute("INSERT INTO productos (codigo, categoria) VALUES ('S1', 'Gafa de sol')")
     conn.commit()
     create_app({"DATABASE": ruta})
-    assert [r[0] for r in conn.execute("SELECT tipo FROM recetas ORDER BY id")] == ["Lentes progresivas", "Lentes de contacto"]
+    assert [r[0] for r in conn.execute("SELECT tipo FROM recetas ORDER BY id")] == ["Lentes multifocales", "Lentes de contacto"]
     assert conn.execute("SELECT categoria FROM productos WHERE codigo = 'S1'").fetchone()[0] == "Lentes de sol"
     conn.close()
 
@@ -843,3 +843,30 @@ def test_sin_gafas_ni_impuestos_en_pantalla(client, db):
     assert "$ 80,00" in detalle and "66.7 % del precio de venta" in detalle  # margen = 120 - 40
     csv = client.get("/productos/exportar.csv").get_data(as_text=True)
     assert "IVA" not in csv
+
+
+
+def test_migracion_multifocales_y_cristales(tmp_path):
+    ruta = str(tmp_path / "vieja.db")
+    create_app({"DATABASE": ruta})
+    conn = connect(ruta)
+    conn.execute("INSERT INTO clientes (nombre) VALUES ('Ana')")
+    conn.execute("INSERT INTO recetas (cliente_id, fecha, tipo) VALUES (1, '2026-01-01', 'Gafas progresivas')")
+    conn.execute("INSERT INTO recetas (cliente_id, fecha, tipo) VALUES (1, '2026-01-02', 'Lentes progresivas')")
+    conn.execute("INSERT INTO productos (codigo, categoria) VALUES ('L1', 'Lente oftálmica')")
+    conn.commit()
+    create_app({"DATABASE": ruta})
+    assert {r[0] for r in conn.execute("SELECT tipo FROM recetas")} == {"Lentes multifocales"}
+    assert conn.execute("SELECT categoria FROM productos WHERE codigo = 'L1'").fetchone()[0] == "Cristales"
+    conn.close()
+
+
+def test_sin_progresivas_ni_lente_oftalmica_en_pantalla(client):
+    import re
+    for url in ["/productos/nuevo", "/productos/", "/ventas/nueva", "/clientes/nuevo"]:
+        texto = re.sub(r"<[^>]+>", " ", client.get(url).get_data(as_text=True))
+        assert not re.search(r"(?i)progresiv|oftálmic", texto), url
+    cid = crear_cliente(client)
+    formulario = client.get(f"/clientes/{cid}/recetas/nueva").get_data(as_text=True)
+    assert "Lentes multifocales" in formulario and "progresiv" not in formulario.lower()
+    assert ">Cristales<" in client.get("/productos/nuevo").get_data(as_text=True)
