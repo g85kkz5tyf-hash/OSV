@@ -219,3 +219,10 @@ fieldset[hidden] { display: none; }
 /* Cobro rápido desde inicio */
 tr.fila-cobro-rapido td { background: #f5f9fd; }
 .boton-cobrar { margin-left: 6px; }
+
+/* Aviso de trabajos con la entrega vencida (inicio) */
+.aviso-atrasados { background: var(--error-fondo); border: 2px solid var(--error); border-radius: var(--radio); padding: 16px 20px; margin-top: 20px; color: #7f1d1d; }
+.aviso-atrasados h2 { color: var(--error); margin-bottom: 4px; }
+.aviso-atrasados p { margin: 0 0 12px; }
+.aviso-atrasados table { background: #fff; border-radius: 6px; }
+.aviso-atrasados th { background: #fbe3e3; color: #7f1d1d; }

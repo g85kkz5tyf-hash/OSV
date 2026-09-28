@@ -74,6 +74,19 @@ def inicio():
         "SELECT * FROM productos WHERE activo = 1 AND controla_stock = 1 AND stock <= stock_minimo"
         " ORDER BY stock, marca LIMIT 15"
     ).fetchall()
+    # Trabajos cuya fecha de entrega prevista ya pasó y todavía no están listos
+    atrasados = db.execute(
+        """
+        SELECT v.id, v.numero, v.estado, v.fecha_entrega_prevista, v.ejecucion, v.numero_trabajo,
+               TRIM(COALESCE(c.nombre, '') || ' ' || COALESCE(c.apellidos, '')) AS cliente_nombre,
+               c.telefono AS cliente_telefono
+        FROM ventas v LEFT JOIN clientes c ON c.id = v.cliente_id
+        WHERE v.estado IN ('Pendiente', 'En taller')
+          AND v.fecha_entrega_prevista != '' AND v.fecha_entrega_prevista < ?
+        ORDER BY v.fecha_entrega_prevista, v.id
+        """,
+        (hoy.isoformat(),),
+    ).fetchall()
     # Trabajos del taller propio que aún no están listos para recoger
     tareas = db.execute(
         """
@@ -90,7 +103,7 @@ def inicio():
     return render_template(
         "inicio.html", ventas_hoy=ventas_hoy, ventas_mes=ventas_mes, cobrado_hoy=cobrado_hoy,
         encargos=encargos, pendiente_cobro=pendiente_cobro, stock_bajo=stock_bajo,
-        tareas=tareas, hoy=hoy.isoformat(),
+        tareas=tareas, atrasados=atrasados, hoy=hoy.isoformat(),
         estados=[e for e in ESTADOS_VENTA if e != "Anulada"], metodos=METODOS_PAGO, laboratorios=LABORATORIOS,
     )
 

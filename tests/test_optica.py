@@ -553,3 +553,22 @@ def test_numero_de_trabajo_se_corrige_desde_la_ficha(client, db):
     # si pasa a taller propio, el número del laboratorio se borra
     client.post("/ventas/1/estado", data={"estado": "En taller", "lugar": "taller", "numero_trabajo": "112"})
     assert db.execute("SELECT numero_trabajo FROM ventas").fetchone()[0] == ""
+
+
+def test_aviso_de_entregas_vencidas(client, db):
+    from datetime import date, timedelta
+    ayer = (date.today() - timedelta(days=1)).isoformat()
+    hoy = date.today().isoformat()
+    vender(client, [{"descripcion": "Atrasado"}], estado="En taller", fecha_entrega_prevista=ayer)
+    vender(client, [{"descripcion": "Vence hoy"}], estado="En taller", fecha_entrega_prevista=hoy)
+    vender(client, [{"descripcion": "Listo a tiempo"}], estado="Listo para recoger", fecha_entrega_prevista=ayer)
+    vender(client, [{"descripcion": "Sin fecha"}], estado="Pendiente")
+    inicio = client.get("/").get_data(as_text=True)
+    assert "1 trabajo con la entrega vencida" in inicio
+    aviso = inicio.split('class="aviso-atrasados"', 1)[1]
+    assert "/ventas/1" in aviso and "/ventas/2" not in aviso and "/ventas/3" not in aviso and "/ventas/4" not in aviso
+    # cambiar a «Pendiente» no lo quita; «Listo para recoger» sí
+    client.post("/ventas/1/cambiar-estado", data={"estado": "Pendiente"})
+    assert 'class="aviso-atrasados"' in client.get("/").get_data(as_text=True)
+    client.post("/ventas/1/cambiar-estado", data={"estado": "Listo para recoger"})
+    assert 'class="aviso-atrasados"' not in client.get("/").get_data(as_text=True)

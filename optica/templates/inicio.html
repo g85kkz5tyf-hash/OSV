@@ -158,6 +158,36 @@
     {% else %}<p class="vacio">No hay trabajos pendientes en el taller propio.</p>{% endif %}
   </div>
 </div>
+
+{% if atrasados %}
+<div class="aviso-atrasados" role="alert">
+  <h2>⚠ {{ atrasados|length }} trabajo{{ 's' if atrasados|length != 1 }} con la entrega vencida</h2>
+  <p>La fecha de entrega prevista ya pasó y todavía no {{ 'están listos' if atrasados|length != 1 else 'está listo' }} para recoger.
+     El aviso desaparece al marcar el trabajo como «Listo para recoger» (o al cambiar su fecha de entrega).</p>
+  <table>
+    <thead><tr><th>Orden</th><th>Cliente</th><th>Debía estar</th><th>Se ejecuta en</th><th>Estado</th></tr></thead>
+    <tbody>
+    {% for a in atrasados %}
+      <tr>
+        <td><a href="{{ url_for('ventas.detalle', venta_id=a.id) }}">{{ a.numero }}</a></td>
+        <td>{{ a.cliente_nombre or 'Sin cliente' }}{% if a.cliente_telefono %}<br><small>{{ a.cliente_telefono }}</small>{% endif %}</td>
+        <td><strong>{{ a.fecha_entrega_prevista|fecha }}</strong></td>
+        <td>{{ a.ejecucion or '—' }}{% if a.numero_trabajo %}<br><small>Nº {{ a.numero_trabajo }}</small>{% endif %}</td>
+        <td>
+          <form method="post" action="{{ url_for('ventas.cambiar_estado', venta_id=a.id) }}" class="cambio-estado">
+            <input type="hidden" name="volver" value="{{ request.path }}">
+            <select name="estado" aria-label="Estado de la venta {{ a.numero }}"
+                    class="selector-estado estado-{{ a.estado|replace(' ', '-') }}" data-actual="{{ a.estado }}" data-pendiente="">
+              {% for e in estados %}<option {{ 'selected' if e == a.estado }}>{{ e }}</option>{% endfor %}
+            </select>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
