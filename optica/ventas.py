@@ -2,7 +2,7 @@ from datetime import date
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
-from .constantes import CAMPOS_OJO, ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO, TIPOS_IVA
+from .constantes import CAMPOS_OJO, CATEGORIA_ARMAZON, MEDIDAS_ARMAZON, ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO, TIPOS_IVA
 from .db import get_config, get_db
 from .productos import nombre_producto, registrar_movimiento
 from .utils import desglose_iva, importe_linea, parse_entero, parse_importe
@@ -268,10 +268,15 @@ def ticket(venta_id):
 
 @bp.route("/<int:venta_id>/orden")
 def orden(venta_id):
-    """Orden de venta en A4 para imprimir, con recuadros de seña y saldo a mano."""
+    """Orden de trabajo en A4 para imprimir, con recuadros de seña y saldo a mano."""
     db = get_db()
     venta = obtener_venta(venta_id)
-    lineas = db.execute("SELECT * FROM lineas_venta WHERE venta_id = ? ORDER BY id", (venta_id,)).fetchall()
+    lineas = db.execute(
+        "SELECT l.*, p.categoria, p.calibre, p.puente, p.diagonal, p.altura"
+        " FROM lineas_venta l LEFT JOIN productos p ON p.id = l.producto_id"
+        " WHERE l.venta_id = ? ORDER BY l.id",
+        (venta_id,),
+    ).fetchall()
     cliente = receta = None
     if venta["cliente_id"]:
         cliente = db.execute("SELECT * FROM clientes WHERE id = ?", (venta["cliente_id"],)).fetchone()
@@ -280,6 +285,7 @@ def orden(venta_id):
     return render_template(
         "ventas/orden.html", venta=venta, lineas=lineas, cliente=cliente, receta=receta,
         campos_ojo=CAMPOS_OJO, config=get_config(db),
+        medidas=MEDIDAS_ARMAZON, armazon=CATEGORIA_ARMAZON,
     )
 
 

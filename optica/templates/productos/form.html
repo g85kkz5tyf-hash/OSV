@@ -15,8 +15,16 @@
     </div>
     {{ campo('marca', 'Marca', producto.marca) }}
     {{ campo('modelo', 'Modelo', producto.modelo) }}
-    {{ campo('color', 'Color / calibre', producto.color) }}
+    {{ campo('color', 'Color', producto.color) }}
     {{ campo('proveedor', 'Proveedor', producto.proveedor) }}
+    <fieldset class="ancho medidas-armazon" id="medidas-armazon" {% if producto.categoria != armazon %}hidden{% endif %}>
+      <legend>Medidas del armazón (mm)</legend>
+      <div class="medidas">
+        {% for nombre, etiqueta, inicial in medidas %}
+          {{ campo(nombre, etiqueta ~ ' (' ~ inicial ~ ')', producto[nombre], extra='inputmode="decimal"') }}
+        {% endfor %}
+      </div>
+    </fieldset>
     <div class="ancho">
       <label for="descripcion">Descripción</label>
       <input id="descripcion" name="descripcion" value="{{ producto.descripcion or '' }}" placeholder="p. ej. Monofocal 1.6 antirreflejante, Mensual tórica…">
@@ -43,4 +51,12 @@
     </div>
   </form>
 </div>
+<script>
+  // Las medidas solo se piden cuando el producto es un armazón
+  const categoria = document.getElementById("categoria");
+  const medidas = document.getElementById("medidas-armazon");
+  categoria.addEventListener("change", () => {
+    medidas.hidden = categoria.value !== {{ armazon|tojson }};
+  });
+</script>
 {% endblock %}

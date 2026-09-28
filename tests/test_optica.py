@@ -31,7 +31,7 @@ def crear_cliente(client, **datos):
 
 def crear_producto(client, codigo="M001", stock="5", controla=True, **extra):
     datos = {
-        "codigo": codigo, "categoria": "Montura", "marca": "Ray-Ban", "modelo": "RB5154",
+        "codigo": codigo, "categoria": "Armazón", "marca": "Ray-Ban", "modelo": "RB5154",
         "color": "Negro", "precio_coste": "40,00", "precio_venta": "120,00", "iva": "22",
         "stock": stock, "stock_minimo": "1", **extra,
     }
@@ -145,7 +145,7 @@ def test_producto_stock_inicial_entrada_y_recuento(client, db):
 
 def test_codigo_producto_duplicado(client, db):
     crear_producto(client, codigo="X1")
-    r = client.post("/productos/nuevo", data={"codigo": "X1", "categoria": "Montura"})
+    r = client.post("/productos/nuevo", data={"codigo": "X1", "categoria": "Armazón"})
     assert r.status_code == 200
     assert "Ya existe" in r.get_data(as_text=True)
     assert db.execute("SELECT COUNT(*) FROM productos").fetchone()[0] == 1
@@ -303,10 +303,10 @@ def test_orden_de_venta(client, db):
                cliente_id=str(cid), receta_id="1", fecha_entrega_prevista="2026-10-05", accion="orden")
     assert r.status_code == 302 and r.headers["Location"].endswith("/ventas/1/orden")
     html = client.get("/ventas/1/orden").get_data(as_text=True)
-    for texto in ["ORDEN DE VENTA", "Ana García López", "600111222", "Ray-Ban RB5154", "+1,50", "-2,00",
+    for texto in ["ORDEN DE TRABAJO", "Ana García López", "600111222", "Ray-Ban RB5154", "+1,50", "-2,00",
                   "05/10/2026", "$ 4.500,00", "SEÑA", "SALDO"]:
         assert texto in html, texto
-    assert "Generar orden de venta" in client.get("/ventas/1").get_data(as_text=True)
+    assert "Generar orden de trabajo" in client.get("/ventas/1").get_data(as_text=True)
 
 
 def test_orden_de_venta_sin_cliente_ni_receta(client):
@@ -329,3 +329,43 @@ def test_cerrar_requiere_clave(app, client, monkeypatch):
 
 def test_version_en_el_pie(client):
     assert "Versión" in client.get("/").get_data(as_text=True)
+
+
+def test_medidas_del_armazon(client, db):
+    pid = crear_producto(client, calibre="52", puente="18", diagonal="55", altura="40")
+    fila = db.execute("SELECT categoria, calibre, puente, diagonal, altura FROM productos WHERE id=?", (pid,)).fetchone()
+    assert tuple(fila) == ("Armazón", "52", "18", "55", "40")
+    detalle = client.get(f"/productos/{pid}").get_data(as_text=True)
+    assert "Calibre (C)" in detalle and "55" in detalle
+    # en otras categorías no se guardan medidas
+    pid2 = crear_producto(client, codigo="SOL1", categoria="Gafa de sol", calibre="60")
+    assert db.execute("SELECT calibre FROM productos WHERE id=?", (pid2,)).fetchone()[0] == ""
+
+
+def test_orden_de_trabajo_con_medidas(client):
+    cid = crear_cliente(client)
+    pid = crear_producto(client, calibre="52", puente="18", diagonal="55", altura="40")
+    vender(client, [{"producto_id": str(pid), "descripcion": "Ray-Ban RB5154", "precio": "4500"}], cliente_id=str(cid))
+    html = client.get("/ventas/1/orden").get_data(as_text=True)
+    assert "ORDEN DE TRABAJO" in html and "ORDEN DE VENTA" not in html
+    for inicial, valor in [("c", "52"), ("p", "18"), ("d", "55"), ("a", "40")]:
+        assert f"<b>{inicial}</b> {valor}" in html
+
+
+def test_migracion_montura_a_armazon(tmp_path):
+    ruta = str(tmp_path / "vieja.db")
+    conn = connect(ruta)
+    # tabla de productos tal como era antes de las medidas
+    conn.execute("""CREATE TABLE productos (id INTEGER PRIMARY KEY AUTOINCREMENT, codigo TEXT NOT NULL UNIQUE,
+        categoria TEXT NOT NULL, marca TEXT NOT NULL DEFAULT '', modelo TEXT NOT NULL DEFAULT '',
+        color TEXT NOT NULL DEFAULT '', descripcion TEXT NOT NULL DEFAULT '', proveedor TEXT NOT NULL DEFAULT '',
+        precio_coste INTEGER NOT NULL DEFAULT 0, precio_venta INTEGER NOT NULL DEFAULT 0,
+        iva INTEGER NOT NULL DEFAULT 21, stock INTEGER NOT NULL DEFAULT 0, stock_minimo INTEGER NOT NULL DEFAULT 0,
+        controla_stock INTEGER NOT NULL DEFAULT 1, activo INTEGER NOT NULL DEFAULT 1,
+        creado TEXT NOT NULL DEFAULT (datetime('now', 'localtime')))""")
+    conn.execute("INSERT INTO productos (codigo, categoria) VALUES ('M1', 'Montura')")
+    conn.commit()
+    app = create_app({"DATABASE": ruta})
+    assert tuple(conn.execute("SELECT categoria, calibre FROM productos").fetchone()) == ("Armazón", "")
+    conn.close()
+    assert app.test_client().get("/productos/1/editar").status_code == 200

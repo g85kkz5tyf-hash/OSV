@@ -204,3 +204,9 @@ input[data-copiado="1"], .copiado-muestra { background: #eef6fc; color: var(--pr
 
 footer.pie { text-align: center; color: var(--suave); font-size: 12px; padding: 8px 0 20px; }
 @media print { footer.pie { display: none; } }
+
+/* Medidas del armazón en el formulario de productos */
+fieldset.medidas-armazon { border: 1px solid var(--borde); border-radius: var(--radio); padding: 12px 16px 16px; margin: 0; }
+fieldset.medidas-armazon legend { font-size: 13px; font-weight: 600; color: var(--suave); padding: 0 6px; }
+fieldset.medidas-armazon .medidas { display: grid; gap: 12px 20px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+fieldset[hidden] { display: none; }

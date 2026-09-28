@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Orden de venta {{ venta.numero }}</title>
+  <title>Orden de trabajo {{ venta.numero }}</title>
   <style>
     * { box-sizing: border-box; }
     body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 14px; color: #000; margin: 0; background: #eef1f4; }
@@ -21,6 +21,8 @@
     .num { text-align: right; white-space: nowrap; }
     table.graduacion th, table.graduacion td { text-align: center; }
     table.graduacion td:first-child, table.graduacion th:first-child { text-align: left; font-weight: 700; width: 50px; }
+    .medidas-armazon { margin-top: 4px; display: flex; gap: 18px; font-size: 13px; }
+    .medidas-armazon b { font-size: 14px; }
     .notas { border: 1px solid #999; padding: 8px; white-space: pre-line; min-height: 40px; }
     .importes { width: 55%; margin-left: auto; margin-top: 20px; }
     .fila-importe { display: flex; align-items: stretch; margin-bottom: 10px; }
@@ -54,7 +56,7 @@
       {% if config.telefono %}Tel. {{ config.telefono }}{% endif %}
     </div>
     <div class="titulo">
-      <h1>ORDEN DE VENTA</h1>
+      <h1>ORDEN DE TRABAJO</h1>
       Nº {{ venta.numero }}
     </div>
   </div>
@@ -73,7 +75,14 @@
     {% for l in lineas %}
       <tr>
         <td class="num">{{ l.cantidad }}</td>
-        <td>{{ l.descripcion }}{% if l.descuento_pct %} <small>(dto. {{ l.descuento_pct }} %)</small>{% endif %}</td>
+        <td>
+          {{ l.descripcion }}{% if l.descuento_pct %} <small>(dto. {{ l.descuento_pct }} %)</small>{% endif %}
+          {% if l.categoria == armazon %}
+          <div class="medidas-armazon">
+            {% for nombre, _, inicial in medidas %}<span><b>{{ inicial|lower }}</b> {{ l[nombre] or '____' }}</span>{% endfor %}
+          </div>
+          {% endif %}
+        </td>
         <td class="num">{{ l.importe|moneda }}</td>
       </tr>
     {% endfor %}

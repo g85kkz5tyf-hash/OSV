@@ -1,5 +1,7 @@
+CATEGORIA_ARMAZON = "Armazón"
+
 CATEGORIAS = [
-    "Montura",
+    CATEGORIA_ARMAZON,
     "Gafa de sol",
     "Lente oftálmica",
     "Lente de contacto",
@@ -34,4 +36,12 @@ CAMPOS_OJO = [
     ("av", "AV"),
     ("dnp", "DNP"),
     ("altura", "Altura"),
+]
+
+# Medidas del armazón: (campo, nombre, inicial que se imprime en la orden de trabajo)
+MEDIDAS_ARMAZON = [
+    ("calibre", "Calibre", "C"),
+    ("puente", "Puente", "P"),
+    ("diagonal", "Diagonal", "D"),
+    ("altura", "Altura", "A"),
 ]

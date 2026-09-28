@@ -3,13 +3,14 @@ import io
 
 from flask import Blueprint, Response, abort, flash, jsonify, redirect, render_template, request, url_for
 
-from .constantes import CATEGORIAS, TIPOS_IVA
+from .constantes import CATEGORIA_ARMAZON, CATEGORIAS, MEDIDAS_ARMAZON, TIPOS_IVA
 from .db import get_db
 from .utils import formato_importe, parse_entero, parse_importe
 
 bp = Blueprint("productos", __name__, url_prefix="/productos")
 
 CAMPOS_TEXTO = ["codigo", "categoria", "marca", "modelo", "color", "descripcion", "proveedor"]
+CAMPOS_MEDIDAS = [campo for campo, _, _ in MEDIDAS_ARMAZON]
 
 
 def obtener_producto(producto_id):
@@ -103,6 +104,10 @@ def exportar():
 
 def datos_producto_formulario():
     datos = {c: request.form.get(c, "").strip() for c in CAMPOS_TEXTO}
+    # Las medidas solo tienen sentido en los armazones
+    es_armazon = datos["categoria"] == CATEGORIA_ARMAZON
+    for campo in CAMPOS_MEDIDAS:
+        datos[campo] = request.form.get(campo, "").strip() if es_armazon else ""
     errores = []
     if not datos["codigo"]:
         errores.append("El código es obligatorio.")
@@ -132,7 +137,8 @@ def contexto_form(producto):
     for campo in ("precio_coste", "precio_venta"):
         if isinstance(form.get(campo), int):
             form[campo] = formato_importe(form[campo])
-    return {"producto": form, "categorias": CATEGORIAS, "tipos_iva": TIPOS_IVA}
+    return {"producto": form, "categorias": CATEGORIAS, "tipos_iva": TIPOS_IVA,
+            "medidas": MEDIDAS_ARMAZON, "armazon": CATEGORIA_ARMAZON}
 
 
 def producto_para_form(datos):
@@ -215,7 +221,7 @@ def detalle(producto_id):
     ).fetchall()
     return render_template(
         "productos/detalle.html", producto=producto, movimientos=movimientos,
-        nombre=nombre_producto(producto),
+        nombre=nombre_producto(producto), medidas=MEDIDAS_ARMAZON, armazon=CATEGORIA_ARMAZON,
     )
 
 
