@@ -223,7 +223,11 @@ def imprimir_receta(cliente_id, receta_id):
 def eliminar_receta(cliente_id, receta_id):
     obtener_receta(cliente_id, receta_id)
     db = get_db()
-    if db.execute("SELECT 1 FROM ventas WHERE receta_id = ? LIMIT 1", (receta_id,)).fetchone():
+    if db.execute(
+        "SELECT 1 FROM ventas WHERE receta_id = :r UNION SELECT 1 FROM venta_recetas WHERE receta_id = :r"
+        " UNION SELECT 1 FROM lineas_venta WHERE receta_id = :r LIMIT 1",
+        {"r": receta_id},
+    ).fetchone():
         flash("La receta está asociada a una venta y no se puede eliminar.", "error")
     else:
         db.execute("DELETE FROM recetas WHERE id = ?", (receta_id,))

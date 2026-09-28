@@ -27,6 +27,7 @@
     table.graduacion td:first-child, table.graduacion th:first-child { text-align: left; font-weight: 700; width: 50px; }
     .medidas-armazon { margin-top: 4px; display: flex; gap: 18px; font-size: 13px; }
     .medidas-armazon b { font-size: 14px; }
+    .receta-de-linea { margin-top: 4px; font-size: 13px; }
     .notas { border: 1px solid #999; padding: 8px; white-space: pre-line; min-height: 40px; }
     .importes { width: 55%; margin-left: auto; margin-top: 20px; }
     .fila-importe { display: flex; align-items: stretch; margin-bottom: 10px; }
@@ -95,6 +96,9 @@
             {% if l.ranurado %}<span><b>RANURADO</b></span>{% endif %}
           </div>
           {% endif %}
+          {% if recetas|length > 1 %}{% for r in recetas if r.id == l.receta_id %}
+          <div class="receta-de-linea">Receta: <b>{{ r.tipo }}</b> ({{ r.fecha|fecha }})</div>
+          {% endfor %}{% endif %}
         </td>
         <td class="num">{{ l.importe|moneda }}</td>
       </tr>
@@ -102,6 +106,7 @@
     </tbody>
   </table>
 
+  {% for receta in (recetas or [none]) %}
   <h2>Receta{% if receta %} · {{ receta.tipo }} · {{ receta.fecha|fecha }}{% if receta.optometrista %} · {{ receta.optometrista }}{% endif %}{% endif %}</h2>
   <table class="graduacion">
     <thead><tr><th></th>{% for _, etiqueta in campos_ojo %}<th>{{ etiqueta }}</th>{% endfor %}</tr></thead>
@@ -115,6 +120,7 @@
     <p>Lentes de contacto: {{ receta.lc_marca }}{% if receta.lc_curva_base %} · CB {{ receta.lc_curva_base }}{% endif %}{% if receta.lc_diametro %} · Ø {{ receta.lc_diametro }}{% endif %}</p>
   {% endif %}
   {% if receta and receta.observaciones %}<p style="white-space: pre-line">Observaciones de la receta: {{ receta.observaciones }}</p>{% endif %}
+  {% endfor %}
 
   {% if venta.notas %}
   <h2>Notas</h2>

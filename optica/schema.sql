@@ -115,7 +115,8 @@ CREATE TABLE IF NOT EXISTS lineas_venta (
     puente TEXT NOT NULL DEFAULT '',
     diagonal TEXT NOT NULL DEFAULT '',
     altura TEXT NOT NULL DEFAULT '',
-    ranurado TEXT NOT NULL DEFAULT '' -- '1' si el armazón propio va ranurado
+    ranurado TEXT NOT NULL DEFAULT '', -- '1' si el armazón propio va ranurado
+    receta_id INTEGER REFERENCES recetas(id) -- receta a la que corresponde la lente
 );
 
 CREATE TABLE IF NOT EXISTS pagos (
@@ -150,3 +151,11 @@ CREATE TABLE IF NOT EXISTS compras_anteriores (
     creado TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 CREATE INDEX IF NOT EXISTS idx_compras_anteriores_cliente ON compras_anteriores(cliente_id);
+
+-- Recetas asociadas a una venta (p. ej. lejos y cerca a la vez). ventas.receta_id es la primera.
+CREATE TABLE IF NOT EXISTS venta_recetas (
+    venta_id INTEGER NOT NULL REFERENCES ventas(id) ON DELETE CASCADE,
+    receta_id INTEGER NOT NULL REFERENCES recetas(id),
+    orden INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (venta_id, receta_id)
+);

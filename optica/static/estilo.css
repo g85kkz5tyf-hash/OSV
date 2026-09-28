@@ -234,3 +234,10 @@ tr.fila-cobro-rapido td { background: #f5f9fd; }
 .medidas-linea[hidden] { display: none; }
 .medidas-linea label.ranurado { font-weight: 600; margin-left: 6px; }
 .medidas-linea label.ranurado input { width: auto; }
+
+/* Varias recetas en una venta */
+.fila-receta { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.receta-linea { margin-top: 6px; }
+.receta-linea label { font-size: 13px; display: flex; align-items: center; gap: 8px; margin: 0; }
+.receta-linea select { width: auto; padding: 4px 8px; }
+.receta-linea[hidden] { display: none; }

@@ -14,12 +14,10 @@
         <span class="suave" id="cliente-info">{{ cliente.dni if cliente else '' }}</span>
         <button type="button" class="secundario peque" id="quitar-cliente">Cambiar</button>
       </p>
-      <div style="max-width: 420px">
-        <label for="receta_id">Receta asociada</label>
-        <select name="receta_id" id="receta_id">
-          <option value="">— Sin receta —</option>
-          {% for r in recetas %}<option value="{{ r.id }}" {{ 'selected' if form.receta_id == r.id|string or (not form and loop.first) }}>{{ r.fecha|fecha }} · {{ r.tipo }}</option>{% endfor %}
-        </select>
+      <div style="max-width: 480px">
+        <label>Receta asociada</label>
+        <div id="lista-recetas"></div>
+        <button type="button" class="secundario peque" id="otra-receta">+ Asociar otra receta</button>
       </div>
     </div>
     <div id="cliente-buscar" class="buscador" style="max-width: 520px" {% if cliente %}hidden{% endif %}>
@@ -84,6 +82,11 @@
       <input type="hidden" name="producto_id">
       <input name="descripcion" required>
       <small class="suave info"></small>
+      <div class="receta-linea" hidden>
+        <label>Receta de esta lente
+          <select name="linea_receta"><option value="">— Elige la receta —</option></select>
+        </label>
+      </div>
       <div class="medidas-linea" hidden>
         <span class="suave">Medidas del armazón del cliente:</span>
         {% for nombre, etiqueta, inicial in medidas %}
@@ -113,6 +116,9 @@ const URL_PRODUCTOS = "{{ url_for('productos.api_buscar') }}";
 const URL_CLIENTES = "{{ url_for('clientes.api_buscar') }}";
 const URL_RECETAS = "{{ url_for('clientes.api_recetas', cliente_id=0) }}".replace("/0/", "/{id}/");
 const PRECIO_RANURADO = {{ precio_ranurado }};
+let RECETAS = {{ recetas|tojson }};
+const RECETAS_ELEGIDAS = {{ recetas_elegidas|tojson }};
+const CATEGORIA_LENTE = {{ categoria_lente|tojson }};
 const IVA_DEFECTO = {{ tipos_iva[0] }};
 const LINEAS_PREVIAS = {{ lineas|tojson }};
 
@@ -169,6 +175,11 @@ function anadirLinea(datos = {}) {
     $("[name=iva]", tr).insertAdjacentHTML("afterend", `<input type="hidden" name="iva" value="${datos.iva}">`);
     $(".info", tr).textContent = datos.info || "";
   }
+  if (datos.categoria === CATEGORIA_LENTE) {
+    // Lente oftálmica: si la venta tiene varias recetas, se elige a cuál corresponde
+    tr.dataset.lente = "1";
+    tr.dataset.receta = datos.linea_receta || "";
+  }
   if (datos.armazon_propio) {
     // El cliente trae su armazón: se piden sus medidas para la orden de trabajo
     $(".medidas-linea", tr).hidden = false;
@@ -188,6 +199,7 @@ function anadirLinea(datos = {}) {
   tr.addEventListener("input", recalcular);
   $(".quitar", tr).addEventListener("click", () => { tr.remove(); recalcular(); });
   tbody.appendChild(tr);
+  actualizarRecetasLineas();
   recalcular();
   return tr;
 }
@@ -246,7 +258,7 @@ buscador($("#buscar-producto"), $("#resultados-producto"), URL_PRODUCTOS,
     const tr = anadirLinea({
       producto_id: p.id, descripcion: p.nombre, precio: importeTexto(p.precio), iva: p.iva,
       info: `${p.codigo}${p.controla_stock ? ` · Stock: ${p.stock}` : ""}`,
-      armazon_propio: p.armazon_propio,
+      armazon_propio: p.armazon_propio, categoria: p.categoria,
     });
     if (p.armazon_propio) $("[name=medida_calibre]", tr).focus();
   });
@@ -259,22 +271,79 @@ buscador($("#buscar-cliente"), $("#resultados-cliente"), URL_CLIENTES,
     $("#cliente-info").textContent = c.dni || "";
     $("#cliente-seleccionado").hidden = false;
     $("#cliente-buscar").hidden = true;
-    const recetas = await (await fetch(URL_RECETAS.replace("{id}", c.id))).json();
-    const select = $("#receta_id");
-    select.innerHTML = '<option value="">— Sin receta —</option>';
-    recetas.forEach((r, i) => {
-      const [a, m, d] = r.fecha.split("-");
-      select.insertAdjacentHTML("beforeend", `<option value="${r.id}" ${i === 0 ? "selected" : ""}>${d}/${m}/${a} · ${esc(r.tipo)}</option>`);
-    });
+    RECETAS = await (await fetch(URL_RECETAS.replace("{id}", c.id))).json();
+    pintarRecetas(RECETAS.length ? [String(RECETAS[0].id)] : []);
   });
 
 $("#quitar-cliente").addEventListener("click", () => {
   $("#cliente_id").value = "";
-  $("#receta_id").innerHTML = '<option value="">— Sin receta —</option>';
+  RECETAS = [];
+  pintarRecetas([]);
   $("#cliente-seleccionado").hidden = true;
   $("#cliente-buscar").hidden = false;
   $("#buscar-cliente").focus();
 });
+
+// --- Recetas de la venta (una o varias) --------------------------------------
+function etiquetaReceta(r) {
+  const [a, m, d] = r.fecha.split("-");
+  return `${d}/${m}/${a} · ${r.tipo}`;
+}
+
+function recetasElegidas() {
+  const ids = [...new Set([...document.querySelectorAll("#lista-recetas select")].map(s => s.value).filter(Boolean))];
+  return ids.map(id => RECETAS.find(r => String(r.id) === id)).filter(Boolean);
+}
+
+function crearSelectReceta(valor, quitable) {
+  const fila = document.createElement("div");
+  fila.className = "fila-receta";
+  const select = document.createElement("select");
+  select.name = "receta_id";
+  select.innerHTML = '<option value="">— Sin receta —</option>' +
+    RECETAS.map(r => `<option value="${r.id}">${esc(etiquetaReceta(r))}</option>`).join("");
+  select.value = valor || "";
+  select.addEventListener("change", actualizarRecetasLineas);
+  fila.appendChild(select);
+  if (quitable) {
+    const quitar = document.createElement("button");
+    quitar.type = "button"; quitar.className = "peligro peque"; quitar.textContent = "✕";
+    quitar.title = "Quitar esta receta de la venta";
+    quitar.addEventListener("click", () => { fila.remove(); actualizarRecetasLineas(); });
+    fila.appendChild(quitar);
+  }
+  $("#lista-recetas").appendChild(fila);
+}
+
+function pintarRecetas(seleccion) {
+  $("#lista-recetas").innerHTML = "";
+  (seleccion.length ? seleccion : [""]).forEach((id, i) => crearSelectReceta(id, i > 0));
+  actualizarRecetasLineas();
+}
+
+function actualizarRecetasLineas() {
+  const elegidas = recetasElegidas();
+  $("#otra-receta").hidden = RECETAS.length < 2;
+  tbody.querySelectorAll("tr[data-lente='1']").forEach(tr => {
+    const caja = $(".receta-linea", tr), select = $("[name=linea_receta]", tr);
+    const actual = select.value || tr.dataset.receta || "";
+    select.innerHTML = '<option value="">— Elige la receta —</option>' +
+      elegidas.map(r => `<option value="${r.id}">${esc(etiquetaReceta(r))}</option>`).join("");
+    select.value = elegidas.some(r => String(r.id) === actual) ? actual : "";
+    tr.dataset.receta = select.value;
+    caja.hidden = elegidas.length < 2;
+    select.required = elegidas.length >= 2;
+  });
+}
+
+$("#otra-receta").addEventListener("click", () => {
+  const usadas = recetasElegidas().map(r => String(r.id));
+  const libre = RECETAS.find(r => !usadas.includes(String(r.id)));
+  crearSelectReceta(libre ? String(libre.id) : "", true);
+  actualizarRecetasLineas();
+});
+
+pintarRecetas(RECETAS_ELEGIDAS);
 
 // Evitar que Enter en un campo envíe la venta sin querer
 $("#form-venta").addEventListener("keydown", e => {

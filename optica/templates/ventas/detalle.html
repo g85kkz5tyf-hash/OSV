@@ -36,6 +36,9 @@
       <tr>
         <td>
           {% if l.producto_id %}<a href="{{ url_for('productos.detalle', producto_id=l.producto_id) }}">{{ l.descripcion }}</a>{% else %}{{ l.descripcion }}{% endif %}
+          {% if recetas|length > 1 %}{% for r in recetas if r.id == l.receta_id %}
+          <br><small class="suave">Receta: {{ r.tipo }} ({{ r.fecha|fecha }})</small>
+          {% endfor %}{% endif %}
           {% if l.armazon_propio %}
           <form method="post" action="{{ url_for('ventas.medidas_armazon_propio', venta_id=venta.id, linea_id=l.id) }}" class="medidas-linea">
             <span class="suave">Medidas del armazón del cliente:</span>
@@ -66,7 +69,7 @@
   <p class="suave">Fecha de venta: {{ venta.fecha|fecha }}</p>
 </div>
 
-{% if receta %}
+{% for receta in recetas %}
 <div class="panel">
   <div class="cabecera">
     <h2>Receta utilizada · {{ receta.fecha|fecha }} · {{ receta.tipo }}</h2>
@@ -75,7 +78,7 @@
   <div class="tabla-scroll">{{ tabla_graduacion(receta, campos_ojo) }}</div>
   {% if receta.observaciones %}<p style="white-space: pre-line"><strong>Observaciones:</strong> {{ receta.observaciones }}</p>{% endif %}
 </div>
-{% endif %}
+{% endfor %}
 
 <div class="rejilla">
   <div class="panel">

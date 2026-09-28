@@ -708,3 +708,69 @@ def test_no_se_quita_ranurado_ya_cobrado(client, db):
     r = client.post(f"/ventas/1/medidas/{linea}", data={}, follow_redirects=True)
     assert "No se puede quitar el ranurado" in r.get_data(as_text=True)
     assert db.execute("SELECT ranurado FROM lineas_venta").fetchone()[0] == "1"
+
+
+def crear_lente(client, codigo="LEN1", descripcion="Monofocal 1.6"):
+    r = client.post("/productos/nuevo", data={"codigo": codigo, "categoria": "Lente oftálmica",
+                                              "descripcion": descripcion, "precio_venta": "3000", "iva": "22"})
+    return int(r.headers["Location"].rstrip("/").split("/")[-1])
+
+
+def venta_varias_recetas(client, cid, recetas, lineas):
+    datos = {
+        "cliente_id": str(cid), "receta_id": [str(r) for r in recetas],
+        "producto_id": [l[0] for l in lineas], "descripcion": [l[1] for l in lineas],
+        "cantidad": ["1"] * len(lineas), "precio": ["3000"] * len(lineas),
+        "descuento": ["0"] * len(lineas), "iva": ["22"] * len(lineas),
+        "linea_receta": [l[2] for l in lineas], "estado": "En taller", "pago": "", "metodo": "Efectivo",
+    }
+    return client.post("/ventas/nueva", data=datos)
+
+
+def test_venta_con_lejos_y_cerca(client, db):
+    cid = crear_cliente(client)
+    client.post(f"/clientes/{cid}/recetas/nueva", data={"fecha": "2026-09-20", "tipo": "Gafas lejos",
+                                                        "od_esfera": "-1,00", "od_adicion": "+2,00", "generar_cerca": "1"})
+    cerca, lejos = [r["id"] for r in db.execute("SELECT id FROM recetas ORDER BY id")]
+    l1, l2 = crear_lente(client, "L1", "Monofocal lejos"), crear_lente(client, "L2", "Monofocal cerca")
+    r = venta_varias_recetas(client, cid, [lejos, cerca],
+                             [(str(l1), "Monofocal lejos", str(lejos)), (str(l2), "Monofocal cerca", str(cerca)),
+                              ("", "Montaje", "")])
+    assert r.status_code == 302
+    assert [x[0] for x in db.execute("SELECT receta_id FROM venta_recetas ORDER BY orden")] == [lejos, cerca]
+    assert db.execute("SELECT receta_id FROM ventas").fetchone()[0] == lejos
+    asignadas = [x[0] for x in db.execute("SELECT receta_id FROM lineas_venta ORDER BY id")]
+    assert asignadas == [lejos, cerca, None]
+    orden = client.get("/ventas/1/orden").get_data(as_text=True)
+    assert "Receta · Gafas lejos" in orden and "Receta · Gafas cerca" in orden
+    assert "Receta: <b>Gafas cerca</b>" in orden and "+1,00" in orden
+    detalle = client.get("/ventas/1").get_data(as_text=True)
+    assert detalle.count("Receta utilizada") == 2 and "Receta: Gafas lejos" in detalle
+    # no se puede borrar una receta usada como segunda receta de una venta
+    client.post(f"/clientes/{cid}/recetas/{cerca}/eliminar")
+    assert db.execute("SELECT COUNT(*) FROM recetas").fetchone()[0] == 2
+
+
+def test_varias_recetas_exige_elegir_en_cada_lente(client, db):
+    cid = crear_cliente(client)
+    client.post(f"/clientes/{cid}/recetas/nueva", data={"tipo": "Gafas lejos"})
+    client.post(f"/clientes/{cid}/recetas/nueva", data={"tipo": "Gafas cerca"})
+    l1 = crear_lente(client)
+    r = venta_varias_recetas(client, cid, [1, 2], [(str(l1), "Monofocal 1.6", "")])
+    assert r.status_code == 200 and "Elige a qué receta corresponde" in r.get_data(as_text=True)
+    # una receta que no está entre las de la venta tampoco vale
+    client.post(f"/clientes/{cid}/recetas/nueva", data={"tipo": "Lentes de contacto"})
+    r = venta_varias_recetas(client, cid, [1, 2], [(str(l1), "Monofocal 1.6", "3")])
+    assert r.status_code == 200
+    assert db.execute("SELECT COUNT(*) FROM ventas").fetchone()[0] == 0
+    # con una sola receta, la lente se le asigna sola
+    assert venta_varias_recetas(client, cid, [2], [(str(l1), "Monofocal 1.6", "")]).status_code == 302
+    assert db.execute("SELECT receta_id FROM lineas_venta").fetchone()[0] == 2
+
+
+def test_receta_de_otro_cliente_entre_varias(client, db):
+    c1, c2 = crear_cliente(client), crear_cliente(client, nombre="Luis")
+    client.post(f"/clientes/{c1}/recetas/nueva", data={"tipo": "Gafas lejos"})
+    client.post(f"/clientes/{c2}/recetas/nueva", data={"tipo": "Gafas cerca"})
+    r = venta_varias_recetas(client, c1, [1, 2], [("", "Servicio", "")])
+    assert r.status_code == 200 and "no pertenece" in r.get_data(as_text=True)

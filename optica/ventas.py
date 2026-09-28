@@ -2,7 +2,7 @@ from datetime import date
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
-from .constantes import PRECIO_RANURADO, CODIGO_ARMAZON_PROPIO, COLORES_EJECUCION, LABORATORIOS, TALLER_PROPIO, CAMPOS_OJO, CATEGORIA_ARMAZON, MEDIDAS_ARMAZON, ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO, TIPOS_IVA
+from .constantes import CATEGORIA_LENTE, PRECIO_RANURADO, CODIGO_ARMAZON_PROPIO, COLORES_EJECUCION, LABORATORIOS, TALLER_PROPIO, CAMPOS_OJO, CATEGORIA_ARMAZON, MEDIDAS_ARMAZON, ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO, TIPOS_IVA
 from .db import get_config, get_db
 from .productos import nombre_producto, registrar_movimiento
 from .utils import desglose_iva, importe_linea, parse_entero, parse_importe
@@ -64,6 +64,17 @@ def contexto_ejecucion():
     return {"laboratorios": LABORATORIOS, "taller_propio": TALLER_PROPIO, "colores": COLORES_EJECUCION}
 
 
+def recetas_de_venta(db, venta):
+    recetas = db.execute(
+        "SELECT r.* FROM venta_recetas vr JOIN recetas r ON r.id = vr.receta_id"
+        " WHERE vr.venta_id = ? ORDER BY vr.orden",
+        (venta["id"],),
+    ).fetchall()
+    if not recetas and venta["receta_id"]:
+        recetas = db.execute("SELECT * FROM recetas WHERE id = ?", (venta["receta_id"],)).fetchall()
+    return recetas
+
+
 def obtener_venta(venta_id):
     venta = get_db().execute(SQL_VENTAS + " WHERE v.id = ?", (venta_id,)).fetchone()
     if venta is None:
@@ -123,9 +134,13 @@ def es_armazon_propio(producto):
     return producto is not None and producto["codigo"] == CODIGO_ARMAZON_PROPIO
 
 
-def leer_lineas_formulario(db):
-    """Lee las líneas enviadas por el formulario y las valida contra el stock."""
+def leer_lineas_formulario(db, receta_ids=()):
+    """Lee las líneas enviadas por el formulario y las valida contra el stock.
+
+    receta_ids: recetas asociadas a la venta. Cada lente oftálmica queda ligada a una de ellas.
+    """
     f = request.form
+    recetas_linea = f.getlist("linea_receta")
     producto_ids = f.getlist("producto_id")
     descripciones = f.getlist("descripcion")
     cantidades = f.getlist("cantidad")
@@ -171,6 +186,15 @@ def leer_lineas_formulario(db):
                     )
         if not producto and iva not in TIPOS_IVA:
             raise ErrorVenta(f"Línea {i + 1}: tipo de IVA no válido.")
+        receta_linea = None
+        if producto is not None and producto["categoria"] == CATEGORIA_LENTE and receta_ids:
+            if len(receta_ids) == 1:
+                receta_linea = receta_ids[0]
+            else:
+                elegida = recetas_linea[i] if i < len(recetas_linea) else ""
+                if not elegida.isdigit() or int(elegida) not in receta_ids:
+                    raise ErrorVenta(f"Elige a qué receta corresponde «{descripcion}».")
+                receta_linea = int(elegida)
         lineas.append({
             "producto": producto,
             "descripcion": descripcion,
@@ -179,6 +203,7 @@ def leer_lineas_formulario(db):
             "descuento_pct": descuento,
             "iva": iva,
             "importe": importe_linea(cantidad, precio, descuento),
+            "receta_id": receta_linea,
             **{campo: (valores[i].strip() if i < len(valores) and es_armazon_propio(producto) else "")
                for campo, valores in medidas.items()},
         })
@@ -187,8 +212,9 @@ def leer_lineas_formulario(db):
     return lineas
 
 
-def crear_venta(db, cliente_id, receta_id, lineas, estado, entrega_prevista, notas, pagos,
+def crear_venta(db, cliente_id, receta_ids, lineas, estado, entrega_prevista, notas, pagos,
                 ejecucion=""):
+    receta_id = receta_ids[0] if receta_ids else None  # la principal
     total = sum(l["importe"] for l in lineas)
     if sum(importe for importe, _ in pagos) > total:
         raise ErrorVenta("El importe cobrado no puede superar el total de la venta.")
@@ -199,15 +225,17 @@ def crear_venta(db, cliente_id, receta_id, lineas, estado, entrega_prevista, not
         (numero, cliente_id, receta_id, total, estado, entrega_prevista, notas, ejecucion),
     )
     venta_id = cur.lastrowid
+    for orden, rid in enumerate(receta_ids):
+        db.execute("INSERT INTO venta_recetas (venta_id, receta_id, orden) VALUES (?, ?, ?)", (venta_id, rid, orden))
     for l in lineas:
         producto = l["producto"]
         db.execute(
             "INSERT INTO lineas_venta (venta_id, producto_id, descripcion, cantidad, precio_unitario,"
-            " descuento_pct, iva, importe, calibre, puente, diagonal, altura, ranurado)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " descuento_pct, iva, importe, calibre, puente, diagonal, altura, ranurado, receta_id)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (venta_id, producto["id"] if producto else None, l["descripcion"], l["cantidad"],
              l["precio_unitario"], l["descuento_pct"], l["iva"], l["importe"],
-             l["calibre"], l["puente"], l["diagonal"], l["altura"], l["ranurado"]),
+             l["calibre"], l["puente"], l["diagonal"], l["altura"], l["ranurado"], l["receta_id"]),
         )
         if producto and producto["controla_stock"]:
             registrar_movimiento(db, producto["id"], -l["cantidad"], "venta", f"Venta {numero}", venta_id)
@@ -224,22 +252,24 @@ def nueva():
     if request.method == "POST":
         f = request.form
         cliente_id = parse_entero(f.get("cliente_id"), None) if f.get("cliente_id", "").isdigit() else None
-        receta_id = parse_entero(f.get("receta_id"), None) if f.get("receta_id", "").isdigit() else None
+        # Una o varias recetas (sin repetir y en el orden elegido)
+        receta_ids = list(dict.fromkeys(int(r) for r in f.getlist("receta_id") if r.isdigit()))
         estado = f.get("estado", "Entregado")
         try:
             if estado not in ESTADOS_VENTA or estado == "Anulada":
                 raise ErrorVenta("Estado no válido.")
             if cliente_id and not db.execute("SELECT 1 FROM clientes WHERE id = ?", (cliente_id,)).fetchone():
                 raise ErrorVenta("El cliente no existe.")
-            if receta_id and not db.execute(
-                "SELECT 1 FROM recetas WHERE id = ? AND cliente_id IS ?", (receta_id, cliente_id)
-            ).fetchone():
-                raise ErrorVenta("La receta no pertenece al cliente seleccionado.")
+            for rid in receta_ids:
+                if not db.execute(
+                    "SELECT 1 FROM recetas WHERE id = ? AND cliente_id IS ?", (rid, cliente_id)
+                ).fetchone():
+                    raise ErrorVenta("La receta no pertenece al cliente seleccionado.")
             pagos = leer_pagos(f, "pago")
             ejecucion = leer_ejecucion(f)
-            lineas = leer_lineas_formulario(db)
+            lineas = leer_lineas_formulario(db, receta_ids)
             venta_id = crear_venta(
-                db, cliente_id, receta_id, lineas, estado,
+                db, cliente_id, receta_ids, lineas, estado,
                 f.get("fecha_entrega_prevista", "").strip(), f.get("notas", "").strip(), pagos,
                 ejecucion,
             )
@@ -272,8 +302,15 @@ def contexto_nueva(form):
     if form:
         for i, descripcion in enumerate(form.getlist("descripcion")):
             medidas = {campo: (form.getlist(f"medida_{campo}")[i:i + 1] or [""])[0] for campo in CAMPOS_ARMAZON_PROPIO}
+            producto_id = form.getlist("producto_id")[i]
+            categoria = ""
+            if producto_id.isdigit():
+                fila = db.execute("SELECT categoria FROM productos WHERE id = ?", (producto_id,)).fetchone()
+                categoria = fila["categoria"] if fila else ""
             lineas.append({
-                "armazon_propio": bool(propio) and form.getlist("producto_id")[i] == str(propio["id"]),
+                "categoria": categoria,
+                "linea_receta": (form.getlist("linea_receta")[i:i + 1] or [""])[0],
+                "armazon_propio": bool(propio) and producto_id == str(propio["id"]),
                 **medidas,
                 "producto_id": form.getlist("producto_id")[i],
                 "descripcion": descripcion,
@@ -282,8 +319,14 @@ def contexto_nueva(form):
                 "descuento": form.getlist("descuento")[i],
                 "iva": form.getlist("iva")[i],
             })
+    if form:
+        recetas_elegidas = [r for r in form.getlist("receta_id") if r]
+    else:
+        recetas_elegidas = [str(recetas[0]["id"])] if recetas else []
     return {
-        "cliente": cliente, "recetas": recetas, "form": form or {}, "lineas": lineas,
+        "cliente": cliente, "form": form or {}, "lineas": lineas,
+        "recetas": [{"id": r["id"], "fecha": r["fecha"], "tipo": r["tipo"]} for r in recetas],
+        "recetas_elegidas": recetas_elegidas, "categoria_lente": CATEGORIA_LENTE,
         "estados": [e for e in ESTADOS_VENTA if e != "Anulada"], "metodos": METODOS_PAGO,
         "tipos_iva": TIPOS_IVA, **contexto_ejecucion(), "medidas": MEDIDAS_ARMAZON,
         "precio_ranurado": PRECIO_RANURADO,
@@ -301,14 +344,13 @@ def detalle(venta_id):
         (CODIGO_ARMAZON_PROPIO, venta_id),
     ).fetchall()
     pagos = db.execute("SELECT * FROM pagos WHERE venta_id = ? ORDER BY id", (venta_id,)).fetchall()
-    cliente = receta = None
+    cliente = None
     if venta["cliente_id"]:
         cliente = db.execute("SELECT * FROM clientes WHERE id = ?", (venta["cliente_id"],)).fetchone()
-    if venta["receta_id"]:
-        receta = db.execute("SELECT * FROM recetas WHERE id = ?", (venta["receta_id"],)).fetchone()
+    recetas = recetas_de_venta(db, venta)
     return render_template(
         "ventas/detalle.html", venta=venta, lineas=lineas, pagos=pagos, cliente=cliente,
-        receta=receta, estados=[e for e in ESTADOS_VENTA if e != "Anulada"], metodos=METODOS_PAGO,
+        recetas=recetas, estados=[e for e in ESTADOS_VENTA if e != "Anulada"], metodos=METODOS_PAGO,
         desglose=desglose_iva(lineas), campos_ojo=CAMPOS_OJO, **contexto_ejecucion(),
         medidas=MEDIDAS_ARMAZON, precio_ranurado=PRECIO_RANURADO,
     )
@@ -335,7 +377,7 @@ def orden(venta_id):
     db = get_db()
     venta = obtener_venta(venta_id)
     lineas = db.execute(
-        "SELECT l.id, l.descripcion, l.cantidad, l.descuento_pct, l.importe, p.categoria,"
+        "SELECT l.id, l.descripcion, l.cantidad, l.descuento_pct, l.importe, l.receta_id, p.categoria,"
         + ", ".join(
             f" CASE WHEN p.codigo = :propio THEN l.{c} ELSE p.{c} END AS {c}" for c, _, _ in MEDIDAS_ARMAZON
         )
@@ -344,13 +386,12 @@ def orden(venta_id):
         " WHERE l.venta_id = :venta ORDER BY l.id",
         {"propio": CODIGO_ARMAZON_PROPIO, "venta": venta_id},
     ).fetchall()
-    cliente = receta = None
+    cliente = None
     if venta["cliente_id"]:
         cliente = db.execute("SELECT * FROM clientes WHERE id = ?", (venta["cliente_id"],)).fetchone()
-    if venta["receta_id"]:
-        receta = db.execute("SELECT * FROM recetas WHERE id = ?", (venta["receta_id"],)).fetchone()
+    recetas = recetas_de_venta(db, venta)
     return render_template(
-        "ventas/orden.html", venta=venta, lineas=lineas, cliente=cliente, receta=receta,
+        "ventas/orden.html", venta=venta, lineas=lineas, cliente=cliente, recetas=recetas,
         campos_ojo=CAMPOS_OJO, config=get_config(db),
         medidas=MEDIDAS_ARMAZON, armazon=CATEGORIA_ARMAZON,
         color_ejecucion=COLORES_EJECUCION.get(venta["ejecucion"], ""),

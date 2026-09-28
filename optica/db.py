@@ -36,13 +36,15 @@ def init_db(path):
     nuevas_columnas = {
         "productos": ["calibre", "puente", "diagonal", "altura"],
         "ventas": ["ejecucion", "numero_trabajo"],  # taller o laboratorio, y nº del laboratorio
-        "lineas_venta": ["calibre", "puente", "diagonal", "altura", "ranurado"],  # armazón propio
+        "lineas_venta": ["calibre", "puente", "diagonal", "altura", "ranurado",  # armazón propio
+                         ("receta_id", "INTEGER REFERENCES recetas(id)")],  # receta de cada lente
     }
     for tabla, nuevas in nuevas_columnas.items():
         columnas = {fila[1] for fila in conn.execute(f"PRAGMA table_info({tabla})")}
         for columna in nuevas:
+            columna, definicion = columna if isinstance(columna, tuple) else (columna, "TEXT NOT NULL DEFAULT ''")
             if columna not in columnas:
-                conn.execute(f"ALTER TABLE {tabla} ADD COLUMN {columna} TEXT NOT NULL DEFAULT ''")
+                conn.execute(f"ALTER TABLE {tabla} ADD COLUMN {columna} {definicion}")
     # Producto «Armazón propio» (costo y precio 0, sin control de stock)
     conn.execute(
         "INSERT OR IGNORE INTO productos (codigo, categoria, descripcion, precio_coste, precio_venta,"

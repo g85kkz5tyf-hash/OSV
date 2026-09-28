@@ -1,9 +1,10 @@
 CATEGORIA_ARMAZON = "Armazón"
+CATEGORIA_LENTE = "Lente oftálmica"
 
 CATEGORIAS = [
     CATEGORIA_ARMAZON,
     "Gafa de sol",
-    "Lente oftálmica",
+    CATEGORIA_LENTE,
     "Lente de contacto",
     "Líquido / mantenimiento",
     "Accesorio",
