@@ -77,6 +77,8 @@
         </td>
         <td>
           {% if v.ejecucion == 'Taller propio' %}Taller propio
+          {% elif v.ejecucion and trabajos.get(v.id) %}Laboratorio {{ v.ejecucion }}
+            {% for r in trabajos[v.id] %}<br><small class="suave">Nº de trabajo {{ r.tipo }}: {{ r.numero_trabajo or '—' }}</small>{% endfor %}
           {% elif v.ejecucion %}Laboratorio {{ v.ejecucion }}<br><small class="suave">Nº de trabajo: {{ v.numero_trabajo or '—' }}</small>
           {% else %}<span class="suave">—</span>{% endif %}
         </td>

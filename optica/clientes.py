@@ -6,6 +6,7 @@ from flask import Blueprint, abort, flash, jsonify, redirect, render_template, r
 from .constantes import CAMPOS_OJO, TIPOS_RECETA
 from .db import get_db
 from .utils import parse_importe
+from .ventas import trabajos_por_receta
 
 bp = Blueprint("clientes", __name__, url_prefix="/clientes")
 
@@ -137,6 +138,7 @@ def ficha(cliente_id):
         "clientes/ficha.html",
         cliente=cliente, recetas=recetas, ventas=ventas, lineas=lineas,
         resumen=resumen, campos_ojo=CAMPOS_OJO,
+        trabajos=trabajos_por_receta(db, [v["id"] for v in ventas]),
         compras_anteriores=db.execute(
             "SELECT * FROM compras_anteriores WHERE cliente_id = ?"
             " ORDER BY fecha = '', fecha DESC, id DESC",

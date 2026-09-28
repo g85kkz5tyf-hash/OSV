@@ -44,11 +44,15 @@
         <td>{% if v.cliente_id %}<a href="{{ url_for('clientes.ficha', cliente_id=v.cliente_id) }}">{{ v.cliente_nombre }}</a>{% else %}<span class="suave">Sin cliente</span>{% endif %}</td>
         <td>{{ v.cliente_telefono or '' }}</td>
         <td class="{{ 'alerta' if v.fecha_entrega_prevista and v.fecha_entrega_prevista < hoy }}">{{ v.fecha_entrega_prevista|fecha }}</td>
+        {% set por_receta = trabajos.get(v.id, []) %}
+        {% set sin_numero = por_receta|rejectattr('numero_trabajo')|list if por_receta else ([] if v.numero_trabajo else [none]) %}
         <td>
           {{ v.ejecucion or '—' }}
           {% if v.ejecucion in laboratorios %}
-            {% if v.numero_trabajo %}<br><small class="suave">Nº {{ v.numero_trabajo }}</small>
-            {% else %}<br><button type="button" class="secundario peque boton-desplegar" data-fila="trabajo-{{ v.id }}">+ Nº de trabajo</button>{% endif %}
+            {% if por_receta %}
+              {% for r in por_receta if r.numero_trabajo %}<br><small class="suave">Nº {{ r.numero_trabajo }} · {{ r.tipo }}</small>{% endfor %}
+            {% elif v.numero_trabajo %}<br><small class="suave">Nº {{ v.numero_trabajo }}</small>{% endif %}
+            {% if sin_numero %}<br><button type="button" class="secundario peque boton-desplegar" data-fila="trabajo-{{ v.id }}">+ Nº de trabajo</button>{% endif %}
           {% endif %}
         </td>
         <td>
@@ -68,11 +72,20 @@
           {% endif %}
         </td>
       </tr>
-      {% if v.ejecucion in laboratorios and not v.numero_trabajo %}
+      {% if v.ejecucion in laboratorios and sin_numero %}
       <tr id="trabajo-{{ v.id }}" class="fila-cobro-rapido" hidden>
         <td colspan="8">
           <form method="post" action="{{ url_for('ventas.numero_trabajo', venta_id=v.id) }}" class="filtros" style="margin: 0">
             <input type="hidden" name="volver" value="{{ request.path }}">
+            {% if por_receta %}
+            <div>
+              <label for="receta-trabajo-{{ v.id }}">¿A qué receta corresponde?</label>
+              <select id="receta-trabajo-{{ v.id }}" name="receta_id" required>
+                {% if sin_numero|length > 1 %}<option value="">— Elige la receta —</option>{% endif %}
+                {% for r in sin_numero %}<option value="{{ r.receta_id }}">{{ r.tipo }} ({{ r.fecha|fecha }})</option>{% endfor %}
+              </select>
+            </div>
+            {% endif %}
             <div class="busqueda" style="max-width: 360px">
               <label for="numero-trabajo-{{ v.id }}">Nº de trabajo de {{ v.ejecucion }} · venta {{ v.numero }}</label>
               <input id="numero-trabajo-{{ v.id }}" name="numero_trabajo" required autocomplete="off">
@@ -172,7 +185,9 @@
         <td><a href="{{ url_for('ventas.detalle', venta_id=a.id) }}">{{ a.numero }}</a></td>
         <td>{{ a.cliente_nombre or 'Sin cliente' }}{% if a.cliente_telefono %}<br><small>{{ a.cliente_telefono }}</small>{% endif %}</td>
         <td><strong>{{ a.fecha_entrega_prevista|fecha }}</strong></td>
-        <td>{{ a.ejecucion or '—' }}{% if a.numero_trabajo %}<br><small>Nº {{ a.numero_trabajo }}</small>{% endif %}</td>
+        <td>{{ a.ejecucion or '—' }}
+          {% if trabajos.get(a.id) %}{% for r in trabajos[a.id] if r.numero_trabajo %}<br><small>Nº {{ r.numero_trabajo }} · {{ r.tipo }}</small>{% endfor %}
+          {% elif a.numero_trabajo %}<br><small>Nº {{ a.numero_trabajo }}</small>{% endif %}</td>
         <td>
           <form method="post" action="{{ url_for('ventas.cambiar_estado', venta_id=a.id) }}" class="cambio-estado">
             <input type="hidden" name="volver" value="{{ request.path }}">

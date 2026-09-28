@@ -75,6 +75,22 @@ def recetas_de_venta(db, venta):
     return recetas
 
 
+def trabajos_por_receta(db, venta_ids):
+    """{venta_id: [receta_id, tipo, fecha, numero_trabajo]} de las ventas con más de una receta."""
+    if not venta_ids:
+        return {}
+    filas = db.execute(
+        f"""SELECT vr.venta_id, vr.receta_id, vr.numero_trabajo, r.tipo, r.fecha
+            FROM venta_recetas vr JOIN recetas r ON r.id = vr.receta_id
+            WHERE vr.venta_id IN ({', '.join('?' * len(venta_ids))}) ORDER BY vr.venta_id, vr.orden""",
+        list(venta_ids),
+    ).fetchall()
+    resultado = {}
+    for f in filas:
+        resultado.setdefault(f["venta_id"], []).append(f)
+    return {v: filas for v, filas in resultado.items() if len(filas) > 1}
+
+
 def obtener_venta(venta_id):
     venta = get_db().execute(SQL_VENTAS + " WHERE v.id = ?", (venta_id,)).fetchone()
     if venta is None:
@@ -352,6 +368,7 @@ def detalle(venta_id):
         "ventas/detalle.html", venta=venta, lineas=lineas, pagos=pagos, cliente=cliente,
         recetas=recetas, estados=[e for e in ESTADOS_VENTA if e != "Anulada"], metodos=METODOS_PAGO,
         desglose=desglose_iva(lineas), campos_ojo=CAMPOS_OJO, **contexto_ejecucion(),
+        trabajos=trabajos_por_receta(db, [venta_id]).get(venta_id, []),
         medidas=MEDIDAS_ARMAZON, precio_ranurado=PRECIO_RANURADO,
     )
 
@@ -436,6 +453,10 @@ def estado(venta_id):
         return redirect(url_for("ventas.detalle", venta_id=venta_id))
     numero = request.form.get("numero_trabajo", "").strip() if ejecucion in LABORATORIOS else ""
     db = get_db()
+    for r in trabajos_por_receta(db, [venta_id]).get(venta_id, []):
+        valor = request.form.get(f"numero_trabajo_{r['receta_id']}", r["numero_trabajo"]).strip()
+        db.execute("UPDATE venta_recetas SET numero_trabajo = ? WHERE venta_id = ? AND receta_id = ?",
+                   (valor if ejecucion in LABORATORIOS else "", venta_id, r["receta_id"]))
     db.execute(
         "UPDATE ventas SET estado = ?, fecha_entrega_prevista = ?, notas = ?, ejecucion = ?,"
         " numero_trabajo = ? WHERE id = ?",
@@ -504,12 +525,24 @@ def numero_trabajo(venta_id):
     venta = obtener_venta(venta_id)
     volver = destino_seguro(request.form.get("volver", ""), url_for("ventas.detalle", venta_id=venta_id))
     numero = request.form.get("numero_trabajo", "").strip()
+    db = get_db()
+    varias = trabajos_por_receta(db, [venta_id]).get(venta_id)
     if venta["ejecucion"] not in LABORATORIOS:
         flash("Esta venta no se ejecuta en un laboratorio.", "error")
     elif not numero:
         flash("Escribe el número de trabajo.", "error")
+    elif varias:
+        # Varias recetas: el número es de una de ellas (lejos, cerca…)
+        receta = next((r for r in varias if str(r["receta_id"]) == request.form.get("receta_id", "")), None)
+        if receta is None:
+            flash("Elige a qué receta corresponde el número de trabajo.", "error")
+        else:
+            db.execute("UPDATE venta_recetas SET numero_trabajo = ? WHERE venta_id = ? AND receta_id = ?",
+                       (numero, venta_id, receta["receta_id"]))
+            db.commit()
+            flash(f"Venta {venta['numero']}: número de trabajo {numero} ({venta['ejecucion']}, "
+                  f"receta {receta['tipo']}) guardado.", "ok")
     else:
-        db = get_db()
         db.execute("UPDATE ventas SET numero_trabajo = ? WHERE id = ?", (numero, venta_id))
         db.commit()
         flash(f"Venta {venta['numero']}: número de trabajo {numero} ({venta['ejecucion']}) guardado.", "ok")

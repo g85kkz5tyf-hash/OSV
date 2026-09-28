@@ -38,6 +38,7 @@ def init_db(path):
         "ventas": ["ejecucion", "numero_trabajo"],  # taller o laboratorio, y nº del laboratorio
         "lineas_venta": ["calibre", "puente", "diagonal", "altura", "ranurado",  # armazón propio
                          ("receta_id", "INTEGER REFERENCES recetas(id)")],  # receta de cada lente
+        "venta_recetas": ["numero_trabajo"],  # nº de trabajo por receta si hay varias
     }
     for tabla, nuevas in nuevas_columnas.items():
         columnas = {fila[1] for fila in conn.execute(f"PRAGMA table_info({tabla})")}

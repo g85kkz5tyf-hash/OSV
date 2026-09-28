@@ -10,6 +10,7 @@ from flask import (Blueprint, abort, current_app, flash, redirect, render_templa
 
 from .constantes import LABORATORIOS, TALLER_PROPIO, ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO
 from .db import get_config, get_db, set_config
+from .ventas import trabajos_por_receta
 
 bp = Blueprint("main", __name__)
 
@@ -104,6 +105,7 @@ def inicio():
         "inicio.html", ventas_hoy=ventas_hoy, ventas_mes=ventas_mes, cobrado_hoy=cobrado_hoy,
         encargos=encargos, pendiente_cobro=pendiente_cobro, stock_bajo=stock_bajo,
         tareas=tareas, atrasados=atrasados, hoy=hoy.isoformat(),
+        trabajos=trabajos_por_receta(db, [v["id"] for v in encargos]),
         estados=[e for e in ESTADOS_VENTA if e != "Anulada"], metodos=METODOS_PAGO, laboratorios=LABORATORIOS,
     )
 

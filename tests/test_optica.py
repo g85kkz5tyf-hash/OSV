@@ -774,3 +774,39 @@ def test_receta_de_otro_cliente_entre_varias(client, db):
     client.post(f"/clientes/{c2}/recetas/nueva", data={"tipo": "Gafas cerca"})
     r = venta_varias_recetas(client, c1, [1, 2], [("", "Servicio", "")])
     assert r.status_code == 200 and "no pertenece" in r.get_data(as_text=True)
+
+
+def test_numero_de_trabajo_por_receta(client, db):
+    cid = crear_cliente(client)
+    client.post(f"/clientes/{cid}/recetas/nueva", data={"tipo": "Gafas lejos", "od_esfera": "-1,00",
+                                                        "od_adicion": "+2,00", "generar_cerca": "1"})
+    cerca, lejos = [r["id"] for r in db.execute("SELECT id FROM recetas ORDER BY id")]
+    l1 = crear_lente(client)
+    datos = {"lugar": "laboratorio", "laboratorio": "Vidaltec"}
+    venta_varias_recetas(client, cid, [lejos, cerca], [(str(l1), "Lejos", str(lejos)), (str(l1), "Cerca", str(cerca))])
+    client.post("/ventas/1/estado", data={"estado": "En taller", **datos})
+    inicio = client.get("/").get_data(as_text=True)
+    assert "¿A qué receta corresponde?" in inicio and "+ Nº de trabajo" in inicio
+
+    # sin elegir receta no se guarda
+    r = client.post("/ventas/1/numero-trabajo", data={"numero_trabajo": "111"}, follow_redirects=True)
+    assert "Elige a qué receta corresponde" in r.get_data(as_text=True)
+    # número de la receta de lejos: el pulsador sigue para la de cerca
+    client.post("/ventas/1/numero-trabajo", data={"numero_trabajo": "VT-100", "receta_id": str(lejos)})
+    inicio = client.get("/").get_data(as_text=True)
+    assert "Nº VT-100 · Gafas lejos" in inicio and "+ Nº de trabajo" in inicio
+    formulario = inicio.split('id="trabajo-1"', 1)[1].split("</form>", 1)[0]
+    assert "Gafas cerca" in formulario and "Gafas lejos" not in formulario  # solo la que falta
+    # número de la de cerca: ya no hay pulsador
+    client.post("/ventas/1/numero-trabajo", data={"numero_trabajo": "VT-101", "receta_id": str(cerca)})
+    inicio = client.get("/").get_data(as_text=True)
+    assert "+ Nº de trabajo" not in inicio and "Nº VT-101 · Gafas cerca" in inicio
+
+    ficha = client.get(f"/clientes/{cid}").get_data(as_text=True)
+    assert "Nº de trabajo Gafas lejos: VT-100" in ficha and "Nº de trabajo Gafas cerca: VT-101" in ficha
+    # corregir uno desde la ficha de la venta
+    detalle = client.get("/ventas/1").get_data(as_text=True)
+    assert f'name="numero_trabajo_{lejos}"' in detalle
+    client.post("/ventas/1/estado", data={"estado": "En taller", **datos, f"numero_trabajo_{lejos}": "VT-200",
+                                          f"numero_trabajo_{cerca}": "VT-101"})
+    assert db.execute("SELECT numero_trabajo FROM venta_recetas WHERE receta_id = ?", (lejos,)).fetchone()[0] == "VT-200"

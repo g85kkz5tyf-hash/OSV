@@ -157,5 +157,6 @@ CREATE TABLE IF NOT EXISTS venta_recetas (
     venta_id INTEGER NOT NULL REFERENCES ventas(id) ON DELETE CASCADE,
     receta_id INTEGER NOT NULL REFERENCES recetas(id),
     orden INTEGER NOT NULL DEFAULT 0,
+    numero_trabajo TEXT NOT NULL DEFAULT '', -- nº del laboratorio para esta receta
     PRIMARY KEY (venta_id, receta_id)
 );
