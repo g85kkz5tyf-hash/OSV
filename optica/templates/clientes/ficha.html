@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros.html" import estado, tabla_graduacion %}
+{% from "macros.html" import estado, tabla_graduacion, campos_compra_anterior %}
 {% block titulo %}{{ cliente.nombre }} {{ cliente.apellidos }}{% endblock %}
 {% block contenido %}
 <div class="cabecera">
@@ -84,6 +84,40 @@
   </table>
   </div>
   {% else %}<p class="vacio">Este cliente todavía no tiene compras.</p>{% endif %}
+</div>
+
+<div class="panel" id="compras-anteriores">
+  <h2>Compras anteriores al programa ({{ compras_anteriores|length }})</h2>
+  <p class="suave" style="margin-top: -6px">Solo como referencia de visitas pasadas: no cuentan en ventas, caja, stock ni informes.</p>
+  {% if compras_anteriores %}
+  <div class="tabla-scroll">
+  <table>
+    <thead><tr><th>Fecha</th><th>Qué compró</th><th class="num">Importe</th><th></th></tr></thead>
+    <tbody>
+    {% for c in compras_anteriores %}
+      <tr>
+        <td>{{ c.fecha|fecha or '—' }}</td>
+        <td>{{ c.descripcion }}{% if c.observaciones %}<br><small class="suave" style="white-space: pre-line">{{ c.observaciones }}</small>{% endif %}</td>
+        <td class="num">{{ c.importe|moneda if c.importe is not none else '—' }}</td>
+        <td class="num">
+          <a class="boton secundario peque" href="{{ url_for('clientes.editar_compra_anterior', cliente_id=cliente.id, compra_id=c.id) }}">Editar</a>
+          <form class="enlinea" method="post" action="{{ url_for('clientes.eliminar_compra_anterior', cliente_id=cliente.id, compra_id=c.id) }}" onsubmit="return confirm('¿Eliminar esta compra anterior?')">
+            <button class="peligro peque">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+  <details {% if not compras_anteriores %}open{% endif %} style="margin-top: 12px">
+    <summary><strong>+ Añadir una compra anterior</strong></summary>
+    <form method="post" action="{{ url_for('clientes.nueva_compra_anterior', cliente_id=cliente.id) }}" style="margin-top: 12px">
+      {{ campos_compra_anterior({}) }}
+      <p><button type="submit">Añadir a la ficha</button></p>
+    </form>
+  </details>
 </div>
 
 {% if not ventas %}

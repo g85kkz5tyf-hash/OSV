@@ -4,6 +4,7 @@ from flask import Blueprint, abort, flash, jsonify, redirect, render_template, r
 
 from .constantes import CAMPOS_OJO, TIPOS_RECETA
 from .db import get_db
+from .utils import parse_importe
 
 bp = Blueprint("clientes", __name__, url_prefix="/clientes")
 
@@ -135,6 +136,11 @@ def ficha(cliente_id):
         "clientes/ficha.html",
         cliente=cliente, recetas=recetas, ventas=ventas, lineas=lineas,
         resumen=resumen, campos_ojo=CAMPOS_OJO,
+        compras_anteriores=db.execute(
+            "SELECT * FROM compras_anteriores WHERE cliente_id = ?"
+            " ORDER BY fecha = '', fecha DESC, id DESC",
+            (cliente_id,),
+        ).fetchall(),
     )
 
 
@@ -248,3 +254,77 @@ def api_recetas(cliente_id):
         (cliente_id,),
     ).fetchall()
     return jsonify([dict(r) for r in recetas])
+
+
+# --- Compras anteriores al programa (solo informativas) ----------------------
+
+def datos_compra_anterior():
+    datos = {
+        "fecha": request.form.get("fecha", "").strip(),
+        "descripcion": request.form.get("descripcion", "").strip(),
+        "observaciones": request.form.get("observaciones", "").strip(),
+    }
+    if not datos["descripcion"]:
+        raise ValueError("Escribe qué compró el cliente.")
+    datos["importe"] = parse_importe(request.form.get("importe"), None)
+    return datos
+
+
+def obtener_compra_anterior(cliente_id, compra_id):
+    compra = get_db().execute(
+        "SELECT * FROM compras_anteriores WHERE id = ? AND cliente_id = ?", (compra_id, cliente_id)
+    ).fetchone()
+    if compra is None:
+        abort(404)
+    return compra
+
+
+@bp.route("/<int:cliente_id>/compras-anteriores", methods=["POST"])
+def nueva_compra_anterior(cliente_id):
+    obtener_cliente(cliente_id)
+    try:
+        datos = datos_compra_anterior()
+    except ValueError as e:
+        flash(str(e), "error")
+        return redirect(url_for("clientes.ficha", cliente_id=cliente_id) + "#compras-anteriores")
+    db = get_db()
+    db.execute(
+        "INSERT INTO compras_anteriores (cliente_id, fecha, descripcion, importe, observaciones)"
+        " VALUES (?, ?, ?, ?, ?)",
+        (cliente_id, datos["fecha"], datos["descripcion"], datos["importe"], datos["observaciones"]),
+    )
+    db.commit()
+    flash("Compra anterior añadida a la ficha.", "ok")
+    return redirect(url_for("clientes.ficha", cliente_id=cliente_id) + "#compras-anteriores")
+
+
+@bp.route("/<int:cliente_id>/compras-anteriores/<int:compra_id>/editar", methods=["GET", "POST"])
+def editar_compra_anterior(cliente_id, compra_id):
+    cliente = obtener_cliente(cliente_id)
+    compra = obtener_compra_anterior(cliente_id, compra_id)
+    if request.method == "POST":
+        try:
+            datos = datos_compra_anterior()
+        except ValueError as e:
+            flash(str(e), "error")
+            return redirect(request.url)
+        db = get_db()
+        db.execute(
+            "UPDATE compras_anteriores SET fecha = ?, descripcion = ?, importe = ?, observaciones = ?"
+            " WHERE id = ?",
+            (datos["fecha"], datos["descripcion"], datos["importe"], datos["observaciones"], compra_id),
+        )
+        db.commit()
+        flash("Compra anterior actualizada.", "ok")
+        return redirect(url_for("clientes.ficha", cliente_id=cliente_id) + "#compras-anteriores")
+    return render_template("clientes/compra_anterior_form.html", cliente=cliente, compra=compra)
+
+
+@bp.route("/<int:cliente_id>/compras-anteriores/<int:compra_id>/eliminar", methods=["POST"])
+def eliminar_compra_anterior(cliente_id, compra_id):
+    obtener_compra_anterior(cliente_id, compra_id)
+    db = get_db()
+    db.execute("DELETE FROM compras_anteriores WHERE id = ?", (compra_id,))
+    db.commit()
+    flash("Compra anterior eliminada.", "ok")
+    return redirect(url_for("clientes.ficha", cliente_id=cliente_id) + "#compras-anteriores")

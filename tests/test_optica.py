@@ -470,3 +470,44 @@ def test_cobro_rapido_desde_inicio(client, db):
     # si hay error también vuelve a inicio, y nunca a otra web
     r = client.post("/ventas/1/pago", data={"importe": "1", "metodo": "Efectivo", "volver": "//malo.com"})
     assert r.headers["Location"] == "/ventas/1"
+
+
+def test_compras_anteriores_no_afectan_datos(client, db):
+    cid = crear_cliente(client)
+    r = client.post(f"/clientes/{cid}/compras-anteriores", data={
+        "fecha": "2021-05-10", "descripcion": "Armazón Vogue + cristales monofocales",
+        "importe": "4.500", "observaciones": "OD -1,00 OI -1,25"})
+    assert r.status_code == 302
+    client.post(f"/clientes/{cid}/compras-anteriores", data={"descripcion": "Lentes de contacto mensuales"})
+    ficha = client.get(f"/clientes/{cid}").get_data(as_text=True)
+    assert "Compras anteriores al programa (2)" in ficha
+    assert "Armazón Vogue + cristales monofocales" in ficha and "$ 4.500,00" in ficha
+    assert "10/05/2021" in ficha and "Lentes de contacto mensuales" in ficha
+    # nada de esto aparece en ventas, caja, informes ni en el total del cliente
+    assert db.execute("SELECT COUNT(*) FROM ventas").fetchone()[0] == 0
+    assert db.execute("SELECT COUNT(*) FROM pagos").fetchone()[0] == 0
+    assert "Armazón Vogue" not in client.get("/informes?anio=2021").get_data(as_text=True)
+    assert "No hay ventas" in client.get("/ventas/").get_data(as_text=True)
+    assert "$ 0,00" in ficha.split("Total comprado", 1)[1][:200]
+
+
+def test_editar_y_eliminar_compra_anterior(client, db):
+    cid = crear_cliente(client)
+    client.post(f"/clientes/{cid}/compras-anteriores", data={"descripcion": "Gafas de sol", "importe": "2000"})
+    assert client.get(f"/clientes/{cid}/compras-anteriores/1/editar").status_code == 200
+    client.post(f"/clientes/{cid}/compras-anteriores/1/editar", data={"descripcion": "Gafas de sol Ray-Ban", "importe": ""})
+    fila = db.execute("SELECT descripcion, importe FROM compras_anteriores").fetchone()
+    assert tuple(fila) == ("Gafas de sol Ray-Ban", None)
+    client.post(f"/clientes/{cid}/compras-anteriores/1/eliminar")
+    assert db.execute("SELECT COUNT(*) FROM compras_anteriores").fetchone()[0] == 0
+
+
+def test_compra_anterior_requiere_descripcion(client, db):
+    cid = crear_cliente(client)
+    r = client.post(f"/clientes/{cid}/compras-anteriores", data={"descripcion": " "}, follow_redirects=True)
+    assert "Escribe qué compró" in r.get_data(as_text=True)
+    assert db.execute("SELECT COUNT(*) FROM compras_anteriores").fetchone()[0] == 0
+    # no se pueden tocar compras de otro cliente
+    otro = crear_cliente(client, nombre="Luis")
+    client.post(f"/clientes/{cid}/compras-anteriores", data={"descripcion": "Armazón"})
+    assert client.post(f"/clientes/{otro}/compras-anteriores/1/eliminar").status_code == 404

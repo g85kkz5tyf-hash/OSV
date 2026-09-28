@@ -132,3 +132,19 @@
 })();
 </script>
 {%- endmacro %}
+
+{% macro campos_compra_anterior(compra) -%}
+<div style="display:grid; gap:12px 20px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+  {{ campo('fecha', 'Fecha (aproximada)', compra.fecha, tipo='date') }}
+  <div style="grid-column: span 2">
+    <label for="descripcion">Qué compró *</label>
+    <input id="descripcion" name="descripcion" value="{{ compra.descripcion or '' }}" required
+           placeholder="p. ej. Armazón Ray-Ban RB5154 + cristales progresivos Varilux">
+  </div>
+  {{ campo('importe', 'Importe ($, opcional)', (compra.importe|importe) if compra.importe is not none and compra.importe is defined else '', extra='inputmode="decimal" placeholder="0,00"') }}
+  <div style="grid-column: 1 / -1">
+    <label for="observaciones">Observaciones</label>
+    <textarea id="observaciones" name="observaciones" placeholder="Graduación de entonces, laboratorio, garantía…">{{ compra.observaciones or '' }}</textarea>
+  </div>
+</div>
+{%- endmacro %}

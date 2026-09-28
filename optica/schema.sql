@@ -130,3 +130,16 @@ CREATE TABLE IF NOT EXISTS configuracion (
     clave TEXT PRIMARY KEY,
     valor TEXT NOT NULL DEFAULT ''
 );
+
+-- Compras hechas antes de usar el programa: solo informativas. No afectan a ventas,
+-- cobros, caja, stock ni informes.
+CREATE TABLE IF NOT EXISTS compras_anteriores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+    fecha TEXT NOT NULL DEFAULT '',
+    descripcion TEXT NOT NULL,
+    importe INTEGER,
+    observaciones TEXT NOT NULL DEFAULT '',
+    creado TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_compras_anteriores_cliente ON compras_anteriores(cliente_id);

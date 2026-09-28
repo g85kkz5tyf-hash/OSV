@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "macros.html" import campos_compra_anterior %}
+{% block titulo %}Compra anterior · {{ cliente.nombre }} {{ cliente.apellidos }}{% endblock %}
+{% block contenido %}
+<div class="cabecera">
+  <h1>Editar compra anterior · <a href="{{ url_for('clientes.ficha', cliente_id=cliente.id) }}">{{ cliente.nombre }} {{ cliente.apellidos }}</a></h1>
+</div>
+<div class="panel">
+  <form method="post">
+    {{ campos_compra_anterior(compra) }}
+    <div class="acciones" style="margin-top: 12px">
+      <button type="submit">Guardar</button>
+      <a class="boton secundario" href="{{ url_for('clientes.ficha', cliente_id=cliente.id) }}#compras-anteriores">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
