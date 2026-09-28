@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block titulo %}Informes{% endblock %}
+{% block contenido %}
+<div class="cabecera">
+  <h1>Informes {{ anio }}</h1>
+  <form class="filtros" method="get" style="margin:0">
+    <div>
+      <label for="anio">Año</label>
+      <select id="anio" name="anio" onchange="this.form.submit()">
+        {% for a in anios %}<option {{ 'selected' if a == anio }}>{{ a }}</option>{% endfor %}
+      </select>
+    </div>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>Ventas por mes · Total año: {{ total_anio|euros }}</h2>
+  <table>
+    <thead><tr><th>Mes</th><th class="num">Ventas</th><th class="num">Importe</th><th style="width: 45%"></th></tr></thead>
+    <tbody>
+    {% for f in filas_mes %}
+      <tr>
+        <td>{{ f.nombre }}</td>
+        <td class="num">{{ f.n }}</td>
+        <td class="num">{{ f.total|euros }}</td>
+        <td>{% if f.total %}<div class="barra-grafico" style="width: {{ (f.total * 100 / max_mes)|round(1) }}%"></div>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="rejilla">
+  <div class="panel">
+    <h2>Por categoría</h2>
+    {% if categorias %}
+    <table>
+      <thead><tr><th>Categoría</th><th class="num">Uds.</th><th class="num">Importe</th></tr></thead>
+      <tbody>{% for c in categorias %}<tr><td>{{ c.categoria }}</td><td class="num">{{ c.unidades }}</td><td class="num">{{ c.total|euros }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% else %}<p class="vacio">Sin datos.</p>{% endif %}
+  </div>
+  <div class="panel">
+    <h2>Productos más vendidos</h2>
+    {% if top %}
+    <table>
+      <thead><tr><th>Producto</th><th class="num">Uds.</th><th class="num">Importe</th></tr></thead>
+      <tbody>{% for t in top %}<tr><td>{{ t.descripcion }}</td><td class="num">{{ t.unidades }}</td><td class="num">{{ t.total|euros }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% else %}<p class="vacio">Sin datos.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

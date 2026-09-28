@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "macros.html" import estado as etiqueta_estado %}
+{% block titulo %}Ventas{% endblock %}
+{% block contenido %}
+<div class="cabecera">
+  <h1>Ventas</h1>
+  <a class="boton" href="{{ url_for('ventas.nueva') }}">+ Nueva venta</a>
+</div>
+
+<form class="filtros" method="get">
+  <div class="busqueda">
+    <label for="q">Buscar</label>
+    <input id="q" name="q" value="{{ q }}" placeholder="Nº de venta, cliente o DNI">
+  </div>
+  <div>
+    <label for="estado">Estado</label>
+    <select id="estado" name="estado" onchange="this.form.submit()">
+      <option value="">Todos</option>
+      <option value="abiertos" {{ 'selected' if estado == 'abiertos' }}>Encargos en curso</option>
+      <option value="pendiente_cobro" {{ 'selected' if estado == 'pendiente_cobro' }}>Pendientes de cobro</option>
+      {% for e in estados %}<option {{ 'selected' if e == estado }}>{{ e }}</option>{% endfor %}
+    </select>
+  </div>
+  <div><label for="desde">Desde</label><input id="desde" type="date" name="desde" value="{{ desde }}"></div>
+  <div><label for="hasta">Hasta</label><input id="hasta" type="date" name="hasta" value="{{ hasta }}"></div>
+  <button type="submit">Filtrar</button>
+  {% if q or estado or desde or hasta %}<a class="boton secundario" href="{{ url_for('ventas.lista') }}">Limpiar</a>{% endif %}
+</form>
+
+<div class="panel">
+  {% if ventas %}
+  <div class="tabla-scroll">
+  <table>
+    <thead><tr><th>Nº</th><th>Fecha</th><th>Cliente</th><th>Estado</th><th class="num">Total</th><th class="num">Pendiente</th></tr></thead>
+    <tbody>
+    {% for v in ventas %}
+      <tr>
+        <td><a href="{{ url_for('ventas.detalle', venta_id=v.id) }}">{{ v.numero }}</a></td>
+        <td>{{ v.fecha|fecha }}</td>
+        <td>{% if v.cliente_id %}<a href="{{ url_for('clientes.ficha', cliente_id=v.cliente_id) }}">{{ v.cliente_nombre }}</a>{% else %}<span class="suave">Venta de mostrador</span>{% endif %}</td>
+        <td>{{ etiqueta_estado(v.estado) }}</td>
+        <td class="num">{{ v.total|euros }}</td>
+        <td class="num {{ 'aviso' if v.estado != 'Anulada' and v.total > v.pagado }}">{{ ((v.total - v.pagado) if v.estado != 'Anulada' else 0)|euros }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><th colspan="4">{{ ventas|length }} venta{{ 's' if ventas|length != 1 }} (sin contar anuladas en los totales)</th><th class="num">{{ total|euros }}</th><th class="num">{{ pendiente|euros }}</th></tr>
+    </tfoot>
+  </table>
+  </div>
+  {% else %}<p class="vacio">No hay ventas{{ ' con esos filtros' if q or estado or desde or hasta }}.</p>{% endif %}
+</div>
+{% endblock %}

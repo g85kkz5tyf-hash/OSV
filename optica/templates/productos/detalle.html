@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block titulo %}{{ nombre }}{% endblock %}
+{% block contenido %}
+<div class="cabecera">
+  <h1>{{ nombre }} {% if not producto.activo %}<span class="etiqueta-estado estado-Anulada">Dado de baja</span>{% endif %}</h1>
+  <div class="acciones">
+    <a class="boton secundario" href="{{ url_for('productos.editar', producto_id=producto.id) }}">Editar</a>
+    <form class="enlinea" method="post" action="{{ url_for('productos.cambiar_activo', producto_id=producto.id) }}">
+      <button class="{{ 'peligro' if producto.activo else 'secundario' }}">{{ 'Dar de baja' if producto.activo else 'Reactivar' }}</button>
+    </form>
+  </div>
+</div>
+
+<div class="rejilla">
+  <div class="panel">
+    <h2>Ficha</h2>
+    <dl class="datos">
+      <dt>Código</dt><dd>{{ producto.codigo }}</dd>
+      <dt>Categoría</dt><dd>{{ producto.categoria }}</dd>
+      <dt>Marca</dt><dd>{{ producto.marca or '—' }}</dd>
+      <dt>Modelo</dt><dd>{{ producto.modelo or '—' }}</dd>
+      <dt>Color / calibre</dt><dd>{{ producto.color or '—' }}</dd>
+      {% if producto.descripcion %}<dt>Descripción</dt><dd>{{ producto.descripcion }}</dd>{% endif %}
+      <dt>Proveedor</dt><dd>{{ producto.proveedor or '—' }}</dd>
+      <dt>Precio de coste</dt><dd>{{ producto.precio_coste|euros }}</dd>
+      <dt>PVP (IVA {{ producto.iva }} % incl.)</dt><dd><strong>{{ producto.precio_venta|euros }}</strong></dd>
+      {% if producto.precio_coste and producto.precio_venta %}
+        {% set base = producto.precio_venta * 100 / (100 + producto.iva) %}
+        <dt>Margen</dt><dd>{{ (base - producto.precio_coste)|round|int|euros }} ({{ ((base - producto.precio_coste) * 100 / base)|round(1) }} % sobre base)</dd>
+      {% endif %}
+    </dl>
+  </div>
+
+  <div class="panel">
+    <h2>Stock</h2>
+    {% if producto.controla_stock %}
+      <p style="font-size: 32px; font-weight: 700; margin: 0" class="{{ 'alerta' if producto.stock <= 0 else ('aviso' if producto.stock <= producto.stock_minimo) }}">{{ producto.stock }} <span style="font-size: 15px" class="suave">uds. (mínimo {{ producto.stock_minimo }})</span></p>
+
+      <h3>Entrada de mercancía</h3>
+      <form class="filtros" method="post" action="{{ url_for('productos.movimiento', producto_id=producto.id) }}">
+        <input type="hidden" name="tipo" value="entrada">
+        <div style="min-width: 90px; flex: 0"><label for="cant_e">Cantidad</label><input id="cant_e" name="cantidad" type="number" min="1" step="1" required></div>
+        <div class="busqueda"><label for="mot_e">Nota</label><input id="mot_e" name="motivo" placeholder="Albarán, proveedor…"></div>
+        <button type="submit">Añadir</button>
+      </form>
+
+      <h3>Recuento / ajuste</h3>
+      <form class="filtros" method="post" action="{{ url_for('productos.movimiento', producto_id=producto.id) }}">
+        <input type="hidden" name="tipo" value="recuento">
+        <div style="min-width: 90px; flex: 0"><label for="cant_r">Stock real</label><input id="cant_r" name="cantidad" type="number" min="0" step="1" value="{{ producto.stock }}" required></div>
+        <div class="busqueda"><label for="mot_r">Motivo</label><input id="mot_r" name="motivo" placeholder="Inventario, rotura, pérdida…"></div>
+        <button type="submit" class="secundario">Ajustar</button>
+      </form>
+    {% else %}
+      <p class="suave">Este producto no controla stock (se sirve por encargo).</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if producto.controla_stock or movimientos %}
+<div class="panel">
+  <h2>Movimientos</h2>
+  {% if movimientos %}
+  <div class="tabla-scroll">
+  <table>
+    <thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th class="num">Cantidad</th><th class="num">Stock</th></tr></thead>
+    <tbody>
+    {% for m in movimientos %}
+      <tr>
+        <td>{{ m.fecha|fecha }}</td>
+        <td>{{ m.tipo|capitalize }}</td>
+        <td>{% if m.venta_id %}<a href="{{ url_for('ventas.detalle', venta_id=m.venta_id) }}">{{ m.motivo }}</a>{% else %}{{ m.motivo }}{% endif %}</td>
+        <td class="num {{ 'alerta' if m.cantidad < 0 }}">{{ '+' if m.cantidad > 0 }}{{ m.cantidad }}</td>
+        <td class="num">{{ m.stock_resultante }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="vacio">Sin movimientos.</p>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

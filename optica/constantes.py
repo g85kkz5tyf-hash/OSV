@@ -1,0 +1,36 @@
+CATEGORIAS = [
+    "Montura",
+    "Gafa de sol",
+    "Lente oftálmica",
+    "Lente de contacto",
+    "Líquido / mantenimiento",
+    "Accesorio",
+    "Servicio",
+]
+
+TIPOS_IVA = [21, 10, 4, 0]
+
+TIPOS_RECETA = [
+    "Gafas lejos",
+    "Gafas cerca",
+    "Gafas progresivas",
+    "Gafas bifocales",
+    "Gafas ocupacionales",
+    "Lentes de contacto",
+]
+
+ESTADOS_VENTA = ["Pendiente", "En taller", "Listo para recoger", "Entregado", "Anulada"]
+ESTADOS_ABIERTOS = ["Pendiente", "En taller", "Listo para recoger"]
+
+METODOS_PAGO = ["Efectivo", "Tarjeta", "Bizum", "Transferencia", "Financiado"]
+
+CAMPOS_OJO = [
+    ("esfera", "Esfera"),
+    ("cilindro", "Cilindro"),
+    ("eje", "Eje"),
+    ("adicion", "Adición"),
+    ("prisma", "Prisma"),
+    ("av", "AV"),
+    ("dnp", "DNP"),
+    ("altura", "Altura"),
+]

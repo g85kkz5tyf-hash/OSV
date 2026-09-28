@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "macros.html" import campo %}
+{% block titulo %}{{ 'Editar producto' if producto.id else 'Nuevo producto' }}{% endblock %}
+{% block contenido %}
+<div class="cabecera"><h1>{{ 'Editar producto' if producto.id else 'Nuevo producto' }}</h1></div>
+<div class="panel">
+  <form class="campos" method="post">
+    {{ campo('codigo', 'Código / referencia *', producto.codigo, extra='required autofocus') }}
+    <div>
+      <label for="categoria">Categoría *</label>
+      <select id="categoria" name="categoria" required>
+        <option value="">— Selecciona —</option>
+        {% for c in categorias %}<option {{ 'selected' if producto.categoria == c }}>{{ c }}</option>{% endfor %}
+      </select>
+    </div>
+    {{ campo('marca', 'Marca', producto.marca) }}
+    {{ campo('modelo', 'Modelo', producto.modelo) }}
+    {{ campo('color', 'Color / calibre', producto.color) }}
+    {{ campo('proveedor', 'Proveedor', producto.proveedor) }}
+    <div class="ancho">
+      <label for="descripcion">Descripción</label>
+      <input id="descripcion" name="descripcion" value="{{ producto.descripcion or '' }}" placeholder="p. ej. Monofocal 1.6 antirreflejante, Mensual tórica…">
+    </div>
+    {{ campo('precio_coste', 'Precio de coste (€)', producto.precio_coste, extra='inputmode="decimal" placeholder="0,00"') }}
+    {{ campo('precio_venta', 'PVP con IVA (€)', producto.precio_venta, extra='inputmode="decimal" placeholder="0,00"') }}
+    <div>
+      <label for="iva">IVA</label>
+      <select id="iva" name="iva">
+        {% for t in tipos_iva %}<option value="{{ t }}" {{ 'selected' if producto.iva == t }}>{{ t }} %</option>{% endfor %}
+      </select>
+    </div>
+    <div class="ancho">
+      <label class="check"><input type="checkbox" id="controla_stock" name="controla_stock" value="1" {{ 'checked' if producto.controla_stock }}> Controlar stock de este producto</label>
+      <p class="suave" style="margin:4px 0 0">Desmárcalo para artículos que se piden por encargo (p. ej. lentes graduadas a medida) o servicios.</p>
+    </div>
+    {% if not producto.id %}
+      {{ campo('stock', 'Stock inicial', producto.stock, tipo='number', extra='min="0" step="1"') }}
+    {% endif %}
+    {{ campo('stock_minimo', 'Stock mínimo (aviso)', producto.stock_minimo, tipo='number', extra='min="0" step="1"') }}
+    <div class="ancho acciones">
+      <button type="submit">Guardar</button>
+      <a class="boton secundario" href="{{ url_for('productos.detalle', producto_id=producto.id) if producto.id else url_for('productos.lista') }}">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

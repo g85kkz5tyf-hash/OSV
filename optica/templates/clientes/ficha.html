@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% from "macros.html" import estado, tabla_graduacion %}
+{% block titulo %}{{ cliente.nombre }} {{ cliente.apellidos }}{% endblock %}
+{% block contenido %}
+<div class="cabecera">
+  <h1>{{ cliente.nombre }} {{ cliente.apellidos }}</h1>
+  <div class="acciones">
+    <a class="boton" href="{{ url_for('ventas.nueva', cliente_id=cliente.id) }}">+ Nueva venta</a>
+    <a class="boton secundario" href="{{ url_for('clientes.nueva_receta', cliente_id=cliente.id) }}">+ Nueva receta</a>
+    <a class="boton secundario" href="{{ url_for('clientes.editar', cliente_id=cliente.id) }}">Editar datos</a>
+  </div>
+</div>
+
+<div class="tarjetas">
+  <div class="tarjeta"><div class="etiqueta">Total comprado</div><div class="valor">{{ resumen.total_comprado|euros }}</div><div class="detalle">{{ resumen.num_compras }} compra{{ 's' if resumen.num_compras != 1 }}</div></div>
+  <div class="tarjeta"><div class="etiqueta">Pendiente de pago</div><div class="valor {{ 'aviso' if resumen.pendiente > 0 }}">{{ resumen.pendiente|euros }}</div></div>
+  <div class="tarjeta"><div class="etiqueta">Última receta</div><div class="valor">{{ recetas[0].fecha|fecha if recetas else '—' }}</div><div class="detalle">{{ recetas[0].tipo if recetas }}</div></div>
+</div>
+
+<div class="panel">
+  <h2>Datos personales</h2>
+  <dl class="datos">
+    <dt>DNI / NIE</dt><dd>{{ cliente.dni or '—' }}</dd>
+    <dt>Fecha de nacimiento</dt><dd>{{ cliente.fecha_nacimiento|fecha or '—' }}</dd>
+    <dt>Teléfono</dt><dd>{% if cliente.telefono %}<a href="tel:{{ cliente.telefono }}">{{ cliente.telefono }}</a>{% else %}—{% endif %}</dd>
+    <dt>Email</dt><dd>{% if cliente.email %}<a href="mailto:{{ cliente.email }}">{{ cliente.email }}</a>{% else %}—{% endif %}</dd>
+    <dt>Dirección</dt><dd>{{ [cliente.direccion, cliente.codigo_postal, cliente.localidad]|select|join(', ') or '—' }}</dd>
+    <dt>Comunicaciones</dt><dd>{{ 'Acepta' if cliente.acepta_comunicaciones else 'No acepta' }}</dd>
+    <dt>Cliente desde</dt><dd>{{ cliente.creado|fecha }}</dd>
+    {% if cliente.notas %}<dt>Notas</dt><dd style="white-space: pre-line">{{ cliente.notas }}</dd>{% endif %}
+  </dl>
+</div>
+
+<div class="panel" id="recetas">
+  <div class="cabecera">
+    <h2>Recetas de optometría ({{ recetas|length }})</h2>
+    <a class="boton secundario peque" href="{{ url_for('clientes.nueva_receta', cliente_id=cliente.id) }}">+ Nueva receta</a>
+  </div>
+  {% for r in recetas %}
+  <div class="receta-bloque">
+    <div class="titulo">
+      <div><strong>{{ r.fecha|fecha }}</strong> · {{ r.tipo }}{% if r.optometrista %} · <span class="suave">{{ r.optometrista }}</span>{% endif %}{% if loop.first %} <span class="etiqueta-estado estado-Listo-para-recoger">Actual</span>{% endif %}</div>
+      <div class="acciones">
+        <a class="boton secundario peque" href="{{ url_for('clientes.imprimir_receta', cliente_id=cliente.id, receta_id=r.id) }}" target="_blank">Imprimir</a>
+        <a class="boton secundario peque" href="{{ url_for('clientes.editar_receta', cliente_id=cliente.id, receta_id=r.id) }}">Editar</a>
+        <form class="enlinea" method="post" action="{{ url_for('clientes.eliminar_receta', cliente_id=cliente.id, receta_id=r.id) }}" onsubmit="return confirm('¿Eliminar esta receta?')">
+          <button class="peligro peque">Eliminar</button>
+        </form>
+      </div>
+    </div>
+    <div class="tabla-scroll">{{ tabla_graduacion(r, campos_ojo) }}</div>
+    {% if r.lc_marca or r.lc_curva_base or r.lc_diametro %}
+      <p><strong>Lentes de contacto:</strong> {{ r.lc_marca }}{% if r.lc_curva_base %} · CB {{ r.lc_curva_base }}{% endif %}{% if r.lc_diametro %} · Ø {{ r.lc_diametro }}{% endif %}</p>
+    {% endif %}
+    {% if r.presion_intraocular %}<p><strong>PIO:</strong> {{ r.presion_intraocular }}</p>{% endif %}
+    {% if r.observaciones %}<p style="white-space: pre-line"><strong>Observaciones:</strong> {{ r.observaciones }}</p>{% endif %}
+    {% if r.proxima_revision %}<p class="suave">Próxima revisión: {{ r.proxima_revision|fecha }}</p>{% endif %}
+  </div>
+  {% else %}
+  <p class="vacio">Sin recetas registradas.</p>
+  {% endfor %}
+</div>
+
+<div class="panel" id="compras">
+  <h2>Historial de compras</h2>
+  {% if ventas %}
+  <div class="tabla-scroll">
+  <table>
+    <thead><tr><th>Nº</th><th>Fecha</th><th>Artículos</th><th>Estado</th><th class="num">Total</th><th class="num">Pendiente</th></tr></thead>
+    <tbody>
+    {% for v in ventas %}
+      <tr>
+        <td><a href="{{ url_for('ventas.detalle', venta_id=v.id) }}">{{ v.numero }}</a></td>
+        <td>{{ v.fecha|fecha }}</td>
+        <td>
+          {% for l in lineas.get(v.id, []) %}{{ l.cantidad }} × {{ l.descripcion }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+        </td>
+        <td>{{ estado(v.estado) }}</td>
+        <td class="num">{{ v.total|euros }}</td>
+        <td class="num {{ 'aviso' if v.estado != 'Anulada' and v.total > v.pagado }}">{{ ((v.total - v.pagado) if v.estado != 'Anulada' else 0)|euros }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="vacio">Este cliente todavía no tiene compras.</p>{% endif %}
+</div>
+
+{% if not ventas %}
+<form method="post" action="{{ url_for('clientes.eliminar', cliente_id=cliente.id) }}" onsubmit="return confirm('¿Eliminar este cliente y sus recetas? Esta acción no se puede deshacer.')">
+  <button class="peligro">Eliminar cliente</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block titulo %}Nueva venta{% endblock %}
+{% block contenido %}
+<div class="cabecera"><h1>Nueva venta</h1></div>
+
+<form method="post" id="form-venta" autocomplete="off">
+  <div class="panel">
+    <h2>Cliente</h2>
+    <input type="hidden" name="cliente_id" id="cliente_id" value="{{ cliente.id if cliente else '' }}">
+    <div id="cliente-seleccionado" {% if not cliente %}hidden{% endif %}>
+      <p style="margin: 0 0 12px">
+        <strong id="cliente-nombre">{{ cliente.nombre ~ ' ' ~ cliente.apellidos if cliente else '' }}</strong>
+        <span class="suave" id="cliente-info">{{ cliente.dni if cliente else '' }}</span>
+        <button type="button" class="secundario peque" id="quitar-cliente">Cambiar</button>
+      </p>
+      <div style="max-width: 420px">
+        <label for="receta_id">Receta asociada</label>
+        <select name="receta_id" id="receta_id">
+          <option value="">— Sin receta —</option>
+          {% for r in recetas %}<option value="{{ r.id }}" {{ 'selected' if form.receta_id == r.id|string or (not form and loop.first) }}>{{ r.fecha|fecha }} · {{ r.tipo }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div id="cliente-buscar" class="buscador" style="max-width: 520px" {% if cliente %}hidden{% endif %}>
+      <input id="buscar-cliente" placeholder="Buscar cliente por nombre, DNI o teléfono (opcional: dejar vacío para venta de mostrador)">
+      <div class="resultados" id="resultados-cliente" hidden></div>
+      <p class="suave" style="margin: 6px 0 0">¿Cliente nuevo? <a href="{{ url_for('clientes.nuevo') }}" target="_blank">Créalo aquí</a> y después búscalo.</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Artículos</h2>
+    <div class="buscador" style="margin-bottom: 12px">
+      <input id="buscar-producto" placeholder="Buscar producto en stock por código, marca, modelo… (Enter para añadir el primero)">
+      <div class="resultados" id="resultados-producto" hidden></div>
+    </div>
+    <div class="tabla-scroll">
+    <table class="lineas">
+      <thead><tr><th style="width:40%">Descripción</th><th style="width:80px">Cant.</th><th style="width:120px">Precio (€)</th><th style="width:80px">Dto. %</th><th style="width:90px">IVA</th><th class="num">Importe</th><th></th></tr></thead>
+      <tbody id="lineas"></tbody>
+    </table>
+    </div>
+    <p><button type="button" class="secundario peque" id="linea-libre">+ Línea libre (servicio, lente por encargo…)</button></p>
+    <div class="totales">Total: <span id="total">0,00 €</span></div>
+  </div>
+
+  <div class="panel">
+    <h2>Entrega y cobro</h2>
+    <div style="display:grid; gap:14px 20px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+      <div>
+        <label for="estado">Estado</label>
+        <select id="estado" name="estado">
+          {% for e in estados %}<option {{ 'selected' if (form.estado or 'Entregado') == e }}>{{ e }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="fecha_entrega_prevista">Entrega prevista</label>
+        <input type="date" id="fecha_entrega_prevista" name="fecha_entrega_prevista" value="{{ form.fecha_entrega_prevista or '' }}">
+      </div>
+      <div>
+        <label for="pago">Cobrado ahora (€)</label>
+        <input id="pago" name="pago" inputmode="decimal" value="{{ form.pago or '' }}" placeholder="0,00">
+        <button type="button" class="secundario peque" id="cobrar-todo" style="margin-top:6px">Cobrar total</button>
+      </div>
+      <div>
+        <label for="metodo">Forma de pago</label>
+        <select id="metodo" name="metodo">
+          {% for m in metodos %}<option {{ 'selected' if form.metodo == m }}>{{ m }}</option>{% endfor %}
+        </select>
+      </div>
+      <div style="grid-column: 1 / -1">
+        <label for="notas">Notas</label>
+        <textarea id="notas" name="notas" placeholder="Detalles del montaje, tratamientos, observaciones para el taller…">{{ form.notas or '' }}</textarea>
+      </div>
+    </div>
+    <p class="suave">Si el cliente deja una señal, indica el importe entregado y el estado del encargo. El resto se cobra después desde la ficha de la venta.</p>
+  </div>
+
+  <div class="acciones">
+    <button type="submit">Registrar venta</button>
+    <a class="boton secundario" href="{{ url_for('ventas.lista') }}">Cancelar</a>
+  </div>
+</form>
+
+<template id="plantilla-linea">
+  <tr>
+    <td>
+      <input type="hidden" name="producto_id">
+      <input name="descripcion" required>
+      <small class="suave info"></small>
+    </td>
+    <td><input name="cantidad" type="number" min="1" step="1" value="1" required></td>
+    <td><input name="precio" inputmode="decimal" required></td>
+    <td><input name="descuento" type="number" min="0" max="100" step="1" value="0"></td>
+    <td>
+      <select name="iva">
+        {% for t in tipos_iva %}<option value="{{ t }}">{{ t }} %</option>{% endfor %}
+      </select>
+    </td>
+    <td class="num importe">0,00 €</td>
+    <td><button type="button" class="peligro peque quitar" title="Quitar línea">✕</button></td>
+  </tr>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const URL_PRODUCTOS = "{{ url_for('productos.api_buscar') }}";
+const URL_CLIENTES = "{{ url_for('clientes.api_buscar') }}";
+const URL_RECETAS = "{{ url_for('clientes.api_recetas', cliente_id=0) }}".replace("/0/", "/{id}/");
+const LINEAS_PREVIAS = {{ lineas|tojson }};
+
+const $ = (s, el = document) => el.querySelector(s);
+
+function aCentimos(texto) {
+  texto = String(texto || "").trim().replace("€", "").replace(/\s/g, "");
+  if (!texto) return 0;
+  if (texto.includes(",")) texto = texto.replace(/\./g, "").replace(",", ".");
+  const n = Number(texto);
+  return isNaN(n) ? 0 : Math.round(n * 100);
+}
+function euros(c) {
+  const signo = c < 0 ? "-" : "";
+  c = Math.abs(Math.round(c));
+  const e = Math.floor(c / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${signo}${e},${String(c % 100).padStart(2, "0")} €`;
+}
+function importeTexto(c) {
+  return `${Math.floor(c / 100)},${String(c % 100).padStart(2, "0")}`;
+}
+
+// --- Líneas ---------------------------------------------------------------
+const tbody = $("#lineas");
+
+function recalcular() {
+  let total = 0;
+  tbody.querySelectorAll("tr").forEach(tr => {
+    const cant = parseInt($("[name=cantidad]", tr).value) || 0;
+    const precio = aCentimos($("[name=precio]", tr).value);
+    const dto = parseInt($("[name=descuento]", tr).value) || 0;
+    const imp = Math.round(cant * precio * (100 - dto) / 100);
+    $(".importe", tr).textContent = euros(imp);
+    total += imp;
+  });
+  $("#total").textContent = euros(total);
+  return total;
+}
+
+function anadirLinea(datos = {}) {
+  const tr = $("#plantilla-linea").content.firstElementChild.cloneNode(true);
+  $("[name=producto_id]", tr).value = datos.producto_id || "";
+  $("[name=descripcion]", tr).value = datos.descripcion || "";
+  if (datos.cantidad) $("[name=cantidad]", tr).value = datos.cantidad;
+  $("[name=precio]", tr).value = datos.precio || "";
+  if (datos.descuento) $("[name=descuento]", tr).value = datos.descuento;
+  if (datos.iva !== undefined && datos.iva !== "") $("[name=iva]", tr).value = String(datos.iva);
+  if (datos.producto_id) {
+    $("[name=iva]", tr).disabled = true;  // el IVA lo fija el producto
+    $("[name=iva]", tr).insertAdjacentHTML("afterend", `<input type="hidden" name="iva" value="${datos.iva}">`);
+    $(".info", tr).textContent = datos.info || "";
+  }
+  tr.addEventListener("input", recalcular);
+  $(".quitar", tr).addEventListener("click", () => { tr.remove(); recalcular(); });
+  tbody.appendChild(tr);
+  recalcular();
+  return tr;
+}
+
+$("#linea-libre").addEventListener("click", () => {
+  const tr = anadirLinea({ iva: 21 });
+  $("[name=descripcion]", tr).focus();
+});
+
+$("#cobrar-todo").addEventListener("click", () => {
+  $("#pago").value = importeTexto(recalcular());
+});
+
+// --- Buscador genérico ------------------------------------------------------
+function buscador(input, caja, url, pintar, elegir) {
+  let temporizador, resultados = [], sel = 0;
+  const mostrar = () => {
+    caja.innerHTML = "";
+    resultados.forEach((r, i) => {
+      const div = document.createElement("div");
+      div.innerHTML = pintar(r);
+      if (i === sel) div.classList.add("sel");
+      div.addEventListener("mousedown", e => { e.preventDefault(); elegir(r); cerrar(); });
+      caja.appendChild(div);
+    });
+    caja.hidden = resultados.length === 0;
+  };
+  const cerrar = () => { caja.hidden = true; resultados = []; input.value = ""; };
+  input.addEventListener("input", () => {
+    clearTimeout(temporizador);
+    const q = input.value.trim();
+    if (!q) { caja.hidden = true; resultados = []; return; }
+    temporizador = setTimeout(async () => {
+      const r = await fetch(`${url}?q=${encodeURIComponent(q)}`);
+      resultados = await r.json(); sel = 0; mostrar();
+    }, 200);
+  });
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (resultados[sel]) { elegir(resultados[sel]); cerrar(); }
+    } else if (e.key === "ArrowDown" && resultados.length) {
+      e.preventDefault(); sel = (sel + 1) % resultados.length; mostrar();
+    } else if (e.key === "ArrowUp" && resultados.length) {
+      e.preventDefault(); sel = (sel - 1 + resultados.length) % resultados.length; mostrar();
+    } else if (e.key === "Escape") {
+      caja.hidden = true;
+    }
+  });
+  input.addEventListener("blur", () => setTimeout(() => caja.hidden = true, 150));
+}
+
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+
+buscador($("#buscar-producto"), $("#resultados-producto"), URL_PRODUCTOS,
+  p => `<strong>${esc(p.nombre)}</strong> — ${euros(p.precio)}<br><small>${esc(p.codigo)} · ${esc(p.categoria)}${p.controla_stock ? ` · Stock: ${p.stock}` : ""}</small>`,
+  p => {
+    if (p.controla_stock && p.stock <= 0 && !confirm(`«${p.nombre}» no tiene stock. ¿Añadirlo igualmente?`)) return;
+    anadirLinea({
+      producto_id: p.id, descripcion: p.nombre, precio: importeTexto(p.precio), iva: p.iva,
+      info: `${p.codigo}${p.controla_stock ? ` · Stock: ${p.stock}` : ""}`,
+    });
+  });
+
+buscador($("#buscar-cliente"), $("#resultados-cliente"), URL_CLIENTES,
+  c => `<strong>${esc(c.nombre)}</strong><br><small>${esc([c.dni, c.telefono].filter(Boolean).join(" · "))}</small>`,
+  async c => {
+    $("#cliente_id").value = c.id;
+    $("#cliente-nombre").textContent = c.nombre;
+    $("#cliente-info").textContent = c.dni || "";
+    $("#cliente-seleccionado").hidden = false;
+    $("#cliente-buscar").hidden = true;
+    const recetas = await (await fetch(URL_RECETAS.replace("{id}", c.id))).json();
+    const select = $("#receta_id");
+    select.innerHTML = '<option value="">— Sin receta —</option>';
+    recetas.forEach((r, i) => {
+      const [a, m, d] = r.fecha.split("-");
+      select.insertAdjacentHTML("beforeend", `<option value="${r.id}" ${i === 0 ? "selected" : ""}>${d}/${m}/${a} · ${esc(r.tipo)}</option>`);
+    });
+  });
+
+$("#quitar-cliente").addEventListener("click", () => {
+  $("#cliente_id").value = "";
+  $("#receta_id").innerHTML = '<option value="">— Sin receta —</option>';
+  $("#cliente-seleccionado").hidden = true;
+  $("#cliente-buscar").hidden = false;
+  $("#buscar-cliente").focus();
+});
+
+// Evitar que Enter en un campo envíe la venta sin querer
+$("#form-venta").addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.tagName === "INPUT") e.preventDefault();
+});
+$("#form-venta").addEventListener("submit", e => {
+  if (!tbody.querySelector("tr")) { e.preventDefault(); alert("Añade al menos un artículo."); }
+});
+
+LINEAS_PREVIAS.forEach(l => anadirLinea(l));
+$("#buscar-producto").focus();
+</script>
+{% endblock %}

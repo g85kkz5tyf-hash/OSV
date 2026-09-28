@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from "macros.html" import campo %}
+{% block titulo %}Receta · {{ cliente.nombre }} {{ cliente.apellidos }}{% endblock %}
+{% block contenido %}
+<div class="cabecera">
+  <h1>{{ 'Editar receta' if receta.id else 'Nueva receta' }} · <a href="{{ url_for('clientes.ficha', cliente_id=cliente.id) }}">{{ cliente.nombre }} {{ cliente.apellidos }}</a></h1>
+</div>
+<form method="post">
+  <div class="panel">
+    <div class="campos" style="display:grid; gap:14px 20px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+      {{ campo('fecha', 'Fecha', receta.fecha, tipo='date', extra='required') }}
+      <div>
+        <label for="tipo">Tipo</label>
+        <select id="tipo" name="tipo">
+          {% for t in tipos %}<option {{ 'selected' if receta.tipo == t }}>{{ t }}</option>{% endfor %}
+        </select>
+      </div>
+      {{ campo('optometrista', 'Optometrista', receta.optometrista) }}
+      {{ campo('proxima_revision', 'Próxima revisión', receta.proxima_revision, tipo='date') }}
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Graduación</h2>
+    <div class="tabla-scroll">
+    <table class="graduacion">
+      <thead><tr><th></th>{% for _, etiqueta in campos_ojo %}<th>{{ etiqueta }}</th>{% endfor %}</tr></thead>
+      <tbody>
+      {% for ojo, nombre in [('od', 'OD (derecho)'), ('oi', 'OI (izquierdo)')] %}
+        <tr>
+          <td>{{ nombre }}</td>
+          {% for c, etiqueta in campos_ojo %}
+            <td><input name="{{ ojo }}_{{ c }}" value="{{ receta[ojo ~ '_' ~ c] or '' }}" aria-label="{{ etiqueta }} {{ nombre }}"></td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <p class="suave">Esfera, cilindro y adición en dioptrías (p. ej. -1,75). Eje en grados (0–180). DNP y altura en mm.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Lentes de contacto y otros datos</h2>
+    <div style="display:grid; gap:14px 20px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+      {{ campo('lc_marca', 'Lente de contacto (marca / modelo)', receta.lc_marca) }}
+      {{ campo('lc_curva_base', 'Curva base', receta.lc_curva_base) }}
+      {{ campo('lc_diametro', 'Diámetro', receta.lc_diametro) }}
+      {{ campo('presion_intraocular', 'Presión intraocular', receta.presion_intraocular) }}
+      <div style="grid-column: 1 / -1">
+        <label for="observaciones">Observaciones</label>
+        <textarea id="observaciones" name="observaciones">{{ receta.observaciones or '' }}</textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="acciones">
+    <button type="submit">Guardar receta</button>
+    <a class="boton secundario" href="{{ url_for('clientes.ficha', cliente_id=cliente.id) }}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

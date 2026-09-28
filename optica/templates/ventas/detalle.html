@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% from "macros.html" import estado as etiqueta_estado, tabla_graduacion %}
+{% block titulo %}Venta {{ venta.numero }}{% endblock %}
+{% block contenido %}
+{% set pendiente = venta.total - venta.pagado %}
+<div class="cabecera">
+  <h1>Venta {{ venta.numero }} {{ etiqueta_estado(venta.estado) }}</h1>
+  <div class="acciones">
+    <a class="boton secundario" href="{{ url_for('ventas.ticket', venta_id=venta.id) }}" target="_blank">Imprimir ticket</a>
+  </div>
+</div>
+
+<div class="tarjetas">
+  <div class="tarjeta"><div class="etiqueta">Total</div><div class="valor">{{ venta.total|euros }}</div></div>
+  <div class="tarjeta"><div class="etiqueta">Cobrado</div><div class="valor">{{ venta.pagado|euros }}</div></div>
+  {% if venta.estado != 'Anulada' %}
+  <div class="tarjeta"><div class="etiqueta">Pendiente</div><div class="valor {{ 'aviso' if pendiente > 0 }}">{{ pendiente|euros }}</div></div>
+  {% endif %}
+  <div class="tarjeta">
+    <div class="etiqueta">Cliente</div>
+    <div class="valor" style="font-size: 18px">
+      {% if cliente %}<a href="{{ url_for('clientes.ficha', cliente_id=cliente.id) }}">{{ cliente.nombre }} {{ cliente.apellidos }}</a>{% else %}<span class="suave">Venta de mostrador</span>{% endif %}
+    </div>
+    <div class="detalle">{{ cliente.telefono if cliente }}</div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Artículos</h2>
+  <div class="tabla-scroll">
+  <table>
+    <thead><tr><th>Descripción</th><th class="num">Cant.</th><th class="num">Precio</th><th class="num">Dto.</th><th class="num">IVA</th><th class="num">Importe</th></tr></thead>
+    <tbody>
+    {% for l in lineas %}
+      <tr>
+        <td>{% if l.producto_id %}<a href="{{ url_for('productos.detalle', producto_id=l.producto_id) }}">{{ l.descripcion }}</a>{% else %}{{ l.descripcion }}{% endif %}</td>
+        <td class="num">{{ l.cantidad }}</td>
+        <td class="num">{{ l.precio_unitario|euros }}</td>
+        <td class="num">{{ l.descuento_pct ~ ' %' if l.descuento_pct else '' }}</td>
+        <td class="num">{{ l.iva }} %</td>
+        <td class="num">{{ l.importe|euros }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+      {% for iva, base, cuota, total in desglose %}
+      <tr><td colspan="5" class="num suave">Base {{ iva }} %: {{ base|euros }} · Cuota IVA: {{ cuota|euros }}</td><td class="num">{{ total|euros }}</td></tr>
+      {% endfor %}
+      <tr><th colspan="5" class="num">Total</th><th class="num">{{ venta.total|euros }}</th></tr>
+    </tfoot>
+  </table>
+  </div>
+  <p class="suave">Fecha de venta: {{ venta.fecha|fecha }}</p>
+</div>
+
+{% if receta %}
+<div class="panel">
+  <div class="cabecera">
+    <h2>Receta utilizada · {{ receta.fecha|fecha }} · {{ receta.tipo }}</h2>
+    <a class="boton secundario peque" target="_blank" href="{{ url_for('clientes.imprimir_receta', cliente_id=receta.cliente_id, receta_id=receta.id) }}">Imprimir receta</a>
+  </div>
+  <div class="tabla-scroll">{{ tabla_graduacion(receta, campos_ojo) }}</div>
+  {% if receta.observaciones %}<p style="white-space: pre-line"><strong>Observaciones:</strong> {{ receta.observaciones }}</p>{% endif %}
+</div>
+{% endif %}
+
+<div class="rejilla">
+  <div class="panel">
+    <h2>Cobros</h2>
+    {% if pagos %}
+    <table>
+      <thead><tr><th>Fecha</th><th>Forma de pago</th><th class="num">Importe</th></tr></thead>
+      <tbody>
+      {% for p in pagos %}
+        <tr><td>{{ p.fecha|fecha }}</td><td>{{ p.metodo }}{{ ' (devolución)' if p.importe < 0 }}</td><td class="num {{ 'alerta' if p.importe < 0 }}">{{ p.importe|euros }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="vacio">Sin cobros registrados.</p>{% endif %}
+
+    {% if venta.estado != 'Anulada' and pendiente > 0 %}
+    <h3>Registrar cobro</h3>
+    <form class="filtros" method="post" action="{{ url_for('ventas.pago', venta_id=venta.id) }}">
+      <div style="min-width: 120px; flex: 0"><label for="importe">Importe (€)</label><input id="importe" name="importe" inputmode="decimal" value="{{ pendiente|importe }}" required></div>
+      <div><label for="metodo">Forma de pago</label>
+        <select id="metodo" name="metodo">{% for m in metodos %}<option>{{ m }}</option>{% endfor %}</select>
+      </div>
+      <button type="submit">Cobrar</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>Estado del encargo</h2>
+    {% if venta.estado != 'Anulada' %}
+    <form method="post" action="{{ url_for('ventas.estado', venta_id=venta.id) }}" style="display:grid; gap: 12px">
+      <div>
+        <label for="estado">Estado</label>
+        <select id="estado" name="estado">{% for e in estados %}<option {{ 'selected' if e == venta.estado }}>{{ e }}</option>{% endfor %}</select>
+      </div>
+      <div>
+        <label for="fecha_entrega_prevista">Entrega prevista</label>
+        <input type="date" id="fecha_entrega_prevista" name="fecha_entrega_prevista" value="{{ venta.fecha_entrega_prevista }}">
+      </div>
+      <div>
+        <label for="notas">Notas</label>
+        <textarea id="notas" name="notas">{{ venta.notas }}</textarea>
+      </div>
+      <div><button type="submit">Guardar</button></div>
+    </form>
+    {% else %}
+      {% if venta.notas %}<p style="white-space: pre-line">{{ venta.notas }}</p>{% endif %}
+      <p class="suave">Esta venta está anulada.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if venta.estado != 'Anulada' %}
+<details class="panel">
+  <summary><strong>Anular venta</strong></summary>
+  <p class="suave">Al anular, los artículos vuelven al stock y se registra la devolución de lo cobrado ({{ venta.pagado|euros }}) en la caja de hoy.</p>
+  <form class="filtros" method="post" action="{{ url_for('ventas.anular', venta_id=venta.id) }}" onsubmit="return confirm('¿Seguro que quieres anular esta venta?')">
+    <div class="busqueda"><label for="motivo">Motivo</label><input id="motivo" name="motivo" placeholder="Devolución, error al registrar…"></div>
+    <button class="peligro">Anular venta</button>
+  </form>
+</details>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block titulo %}Stock{% endblock %}
+{% block contenido %}
+<div class="cabecera">
+  <h1>Stock</h1>
+  <div class="acciones">
+    <a class="boton secundario" href="{{ url_for('productos.exportar', **request.args) }}">Exportar a Excel (CSV)</a>
+    <a class="boton" href="{{ url_for('productos.nuevo', categoria=categoria) }}">+ Nuevo producto</a>
+  </div>
+</div>
+
+<form class="filtros" method="get">
+  <div class="busqueda">
+    <label for="q">Buscar</label>
+    <input id="q" name="q" value="{{ q }}" placeholder="Código, marca, modelo, color, proveedor…">
+  </div>
+  <div>
+    <label for="categoria">Categoría</label>
+    <select id="categoria" name="categoria" onchange="this.form.submit()">
+      <option value="">Todas</option>
+      {% for c in categorias %}<option {{ 'selected' if c == categoria }}>{{ c }}</option>{% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="filtro">Stock</label>
+    <select id="filtro" name="filtro" onchange="this.form.submit()">
+      <option value="">Todo</option>
+      <option value="bajo" {{ 'selected' if filtro == 'bajo' }}>Bajo mínimo</option>
+      <option value="agotado" {{ 'selected' if filtro == 'agotado' }}>Agotado</option>
+    </select>
+  </div>
+  <div>
+    <label class="check" style="margin-bottom:10px"><input type="checkbox" name="inactivos" value="1" {{ 'checked' if inactivos }} onchange="this.form.submit()"> Incluir dados de baja</label>
+  </div>
+  <button type="submit">Filtrar</button>
+</form>
+
+<div class="tarjetas">
+  <div class="tarjeta"><div class="etiqueta">Referencias</div><div class="valor">{{ productos|length }}</div></div>
+  <div class="tarjeta"><div class="etiqueta">Unidades en stock</div><div class="valor">{{ unidades }}</div></div>
+  <div class="tarjeta"><div class="etiqueta">Valor a coste</div><div class="valor">{{ valor_coste|euros }}</div></div>
+  <div class="tarjeta"><div class="etiqueta">Valor a PVP</div><div class="valor">{{ valor_venta|euros }}</div></div>
+</div>
+
+<div class="panel">
+  {% if productos %}
+  <div class="tabla-scroll">
+  <table>
+    <thead><tr><th>Código</th><th>Categoría</th><th>Marca / modelo</th><th>Color</th><th class="num">Coste</th><th class="num">PVP</th><th class="num">Stock</th></tr></thead>
+    <tbody>
+    {% for p in productos %}
+      <tr>
+        <td><a href="{{ url_for('productos.detalle', producto_id=p.id) }}">{{ p.codigo }}</a></td>
+        <td>{{ p.categoria }}</td>
+        <td><a href="{{ url_for('productos.detalle', producto_id=p.id) }}">{{ p.marca }} {{ p.modelo }}</a>{% if p.descripcion %}<br><small class="suave">{{ p.descripcion }}</small>{% endif %}{% if not p.activo %} <span class="etiqueta-estado estado-Anulada">Baja</span>{% endif %}</td>
+        <td>{{ p.color }}</td>
+        <td class="num">{{ p.precio_coste|euros }}</td>
+        <td class="num">{{ p.precio_venta|euros }}</td>
+        <td class="num">
+          {% if p.controla_stock %}
+            <span class="{{ 'alerta' if p.stock <= 0 else ('aviso' if p.stock <= p.stock_minimo) }}">{{ p.stock }}</span>
+          {% else %}<span class="suave">—</span>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="vacio">No hay productos{{ ' con esos filtros' if q or categoria or filtro }}.</p>
+  {% endif %}
+</div>
+{% endblock %}

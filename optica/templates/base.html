@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}{% endblock %} · {{ tienda.nombre or "Gestión Óptica" }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+</head>
+<body>
+  {% set seccion = request.blueprint %}
+  <header class="barra">
+    <a class="marca" href="{{ url_for('main.inicio') }}">👓 {{ tienda.nombre or "Gestión Óptica" }}</a>
+    <nav>
+      <a href="{{ url_for('main.inicio') }}" class="{{ 'activo' if request.endpoint == 'main.inicio' }}">Inicio</a>
+      <a href="{{ url_for('ventas.lista') }}" class="{{ 'activo' if seccion == 'ventas' }}">Ventas</a>
+      <a href="{{ url_for('clientes.lista') }}" class="{{ 'activo' if seccion == 'clientes' }}">Clientes</a>
+      <a href="{{ url_for('productos.lista') }}" class="{{ 'activo' if seccion == 'productos' }}">Stock</a>
+      <a href="{{ url_for('main.caja') }}" class="{{ 'activo' if request.endpoint == 'main.caja' }}">Caja</a>
+      <a href="{{ url_for('main.informes') }}" class="{{ 'activo' if request.endpoint == 'main.informes' }}">Informes</a>
+      <a href="{{ url_for('main.configuracion') }}" class="{{ 'activo' if request.endpoint == 'main.configuracion' }}">Configuración</a>
+    </nav>
+    <div class="accion"><a class="boton" href="{{ url_for('ventas.nueva') }}">+ Nueva venta</a></div>
+  </header>
+  <main>
+    {% with mensajes = get_flashed_messages(with_categories=true) %}
+      {% if mensajes %}
+        <div class="mensajes">
+          {% for categoria, texto in mensajes %}<div class="mensaje {{ categoria }}">{{ texto }}</div>{% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block contenido %}{% endblock %}
+  </main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

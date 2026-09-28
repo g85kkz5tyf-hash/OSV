@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "macros.html" import campo %}
+{% block titulo %}Configuración{% endblock %}
+{% block contenido %}
+<h1>Configuración</h1>
+<div class="panel">
+  <h2>Datos de la óptica</h2>
+  <p class="suave">Aparecen en la cabecera, en los tickets y en las recetas impresas.</p>
+  <form class="campos" method="post">
+    {{ campo('nombre', 'Nombre comercial', config.nombre) }}
+    {{ campo('nif', 'NIF / CIF', config.nif) }}
+    {{ campo('direccion', 'Dirección', config.direccion) }}
+    {{ campo('telefono', 'Teléfono', config.telefono) }}
+    {{ campo('email', 'Email', config.email) }}
+    <div class="ancho">
+      <label for="pie_ticket">Pie del ticket</label>
+      <textarea id="pie_ticket" name="pie_ticket" placeholder="Gracias por su visita. Garantía de 2 años en monturas…">{{ config.pie_ticket or '' }}</textarea>
+    </div>
+    <div class="ancho"><button type="submit">Guardar</button></div>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>Copia de seguridad</h2>
+  <p>Todos los datos se guardan en un único archivo en tu ordenador. Descarga una copia con regularidad (por ejemplo, cada semana) y guárdala en un pendrive o en la nube.</p>
+  <a class="boton" href="{{ url_for('main.copia_seguridad') }}">Descargar copia de seguridad</a>
+  <p class="suave">Para restaurar una copia, cierra el programa y sustituye el archivo <code>datos/optica.db</code> por la copia descargada (renombrándola a <code>optica.db</code>).</p>
+</div>
+{% endblock %}

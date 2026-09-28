@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% from "macros.html" import estado %}
+{% block titulo %}Inicio{% endblock %}
+{% block contenido %}
+<h1>Resumen</h1>
+
+<div class="tarjetas">
+  <div class="tarjeta">
+    <div class="etiqueta">Ventas de hoy</div>
+    <div class="valor">{{ ventas_hoy.total|euros }}</div>
+    <div class="detalle">{{ ventas_hoy.n }} venta{{ 's' if ventas_hoy.n != 1 }}</div>
+  </div>
+  <div class="tarjeta">
+    <div class="etiqueta">Cobrado hoy</div>
+    <div class="valor">{{ cobrado_hoy|euros }}</div>
+    <div class="detalle"><a href="{{ url_for('main.caja') }}">Ver caja del día</a></div>
+  </div>
+  <div class="tarjeta">
+    <div class="etiqueta">Ventas del mes</div>
+    <div class="valor">{{ ventas_mes.total|euros }}</div>
+    <div class="detalle">{{ ventas_mes.n }} venta{{ 's' if ventas_mes.n != 1 }}</div>
+  </div>
+  <div class="tarjeta">
+    <div class="etiqueta">Pendiente de cobro</div>
+    <div class="valor {{ 'aviso' if pendiente_cobro > 0 }}">{{ pendiente_cobro|euros }}</div>
+    <div class="detalle"><a href="{{ url_for('ventas.lista', estado='pendiente_cobro') }}">Ver ventas</a></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="cabecera">
+    <h2>Encargos en curso ({{ encargos|length }})</h2>
+    <a href="{{ url_for('ventas.lista', estado='abiertos') }}">Ver todos</a>
+  </div>
+  {% if encargos %}
+  <div class="tabla-scroll">
+  <table>
+    <thead><tr><th>Nº</th><th>Fecha</th><th>Cliente</th><th>Teléfono</th><th>Entrega prevista</th><th>Estado</th><th class="num">Pendiente</th></tr></thead>
+    <tbody>
+    {% for v in encargos %}
+      <tr>
+        <td><a href="{{ url_for('ventas.detalle', venta_id=v.id) }}">{{ v.numero }}</a></td>
+        <td>{{ v.fecha|fecha }}</td>
+        <td>{% if v.cliente_id %}<a href="{{ url_for('clientes.ficha', cliente_id=v.cliente_id) }}">{{ v.cliente_nombre }}</a>{% else %}<span class="suave">Sin cliente</span>{% endif %}</td>
+        <td>{{ v.cliente_telefono or '' }}</td>
+        <td class="{{ 'alerta' if v.fecha_entrega_prevista and v.fecha_entrega_prevista < hoy }}">{{ v.fecha_entrega_prevista|fecha }}</td>
+        <td>{{ estado(v.estado) }}</td>
+        <td class="num">{{ (v.total - v.pagado)|euros }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="vacio">No hay encargos pendientes.</p>{% endif %}
+</div>
+
+<div class="rejilla">
+  <div class="panel">
+    <div class="cabecera">
+      <h2>Stock bajo</h2>
+      <a href="{{ url_for('productos.lista', filtro='bajo') }}">Ver todos</a>
+    </div>
+    {% if stock_bajo %}
+    <table>
+      <thead><tr><th>Producto</th><th class="num">Stock</th><th class="num">Mínimo</th></tr></thead>
+      <tbody>
+      {% for p in stock_bajo %}
+        <tr>
+          <td><a href="{{ url_for('productos.detalle', producto_id=p.id) }}">{{ p.marca }} {{ p.modelo }} {{ p.color }}</a><br><small class="suave">{{ p.codigo }} · {{ p.categoria }}</small></td>
+          <td class="num {{ 'alerta' if p.stock <= 0 else 'aviso' }}">{{ p.stock }}</td>
+          <td class="num">{{ p.stock_minimo }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="vacio">Todo el stock está por encima del mínimo.</p>{% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>Revisiones próximas</h2>
+    {% if revisiones %}
+    <table>
+      <thead><tr><th>Cliente</th><th>Teléfono</th><th>Revisión</th></tr></thead>
+      <tbody>
+      {% for r in revisiones %}
+        <tr>
+          <td><a href="{{ url_for('clientes.ficha', cliente_id=r.cliente_id) }}">{{ r.nombre }} {{ r.apellidos }}</a><br><small class="suave">{{ r.tipo }}</small></td>
+          <td>{{ r.telefono }}</td>
+          <td class="{{ 'aviso' if r.proxima_revision < hoy }}">{{ r.proxima_revision|fecha }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="vacio">No hay revisiones previstas en los próximos 30 días.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

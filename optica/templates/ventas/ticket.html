@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Ticket {{ venta.numero }}</title>
+  <style>
+    body { font-family: "Courier New", monospace; font-size: 13px; color: #000; margin: 0; }
+    .ticket { width: 76mm; margin: 12px auto; }
+    .centro { text-align: center; }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 2px 0; vertical-align: top; }
+    .num { text-align: right; white-space: nowrap; }
+    hr { border: none; border-top: 1px dashed #000; margin: 8px 0; }
+    .total { font-size: 16px; font-weight: bold; }
+    .no-imprimir { text-align: center; margin: 12px; }
+    @media print { .no-imprimir { display: none; } .ticket { margin: 0; } @page { margin: 4mm; } }
+  </style>
+</head>
+<body>
+<div class="no-imprimir"><button onclick="window.print()">Imprimir</button></div>
+<div class="ticket">
+  <div class="centro">
+    <strong style="font-size: 16px">{{ config.nombre or 'Óptica' }}</strong><br>
+    {% if config.nif %}NIF: {{ config.nif }}<br>{% endif %}
+    {% if config.direccion %}{{ config.direccion }}<br>{% endif %}
+    {% if config.telefono %}Tel. {{ config.telefono }}<br>{% endif %}
+  </div>
+  <hr>
+  {{ 'FACTURA SIMPLIFICADA' if venta.estado != 'Anulada' else 'VENTA ANULADA' }}<br>
+  Nº {{ venta.numero }}<br>
+  Fecha: {{ venta.fecha|fecha }}<br>
+  {% if cliente %}Cliente: {{ cliente.nombre }} {{ cliente.apellidos }}{% if cliente.dni %}<br>DNI: {{ cliente.dni }}{% endif %}<br>{% endif %}
+  <hr>
+  <table>
+    {% for l in lineas %}
+    <tr><td colspan="2">{{ l.descripcion }}</td></tr>
+    <tr>
+      <td>&nbsp;&nbsp;{{ l.cantidad }} x {{ l.precio_unitario|euros }}{% if l.descuento_pct %} -{{ l.descuento_pct }}%{% endif %}</td>
+      <td class="num">{{ l.importe|euros }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <hr>
+  <table>
+    <tr class="total"><td>TOTAL</td><td class="num">{{ venta.total|euros }}</td></tr>
+    {% for iva, base, cuota, total in desglose %}
+    <tr><td>Base IVA {{ iva }}%</td><td class="num">{{ base|euros }}</td></tr>
+    <tr><td>Cuota IVA {{ iva }}%</td><td class="num">{{ cuota|euros }}</td></tr>
+    {% endfor %}
+  </table>
+  <hr>
+  <table>
+    {% for p in pagos %}
+    <tr><td>{{ p.metodo }}{{ ' (devolución)' if p.importe < 0 }}</td><td class="num">{{ p.importe|euros }}</td></tr>
+    {% endfor %}
+    {% if venta.estado != 'Anulada' and venta.total > venta.pagado %}
+    <tr><td><strong>Pendiente</strong></td><td class="num"><strong>{{ (venta.total - venta.pagado)|euros }}</strong></td></tr>
+    {% endif %}
+  </table>
+  {% if venta.fecha_entrega_prevista and venta.estado != 'Entregado' and venta.estado != 'Anulada' %}
+  <hr>
+  Entrega prevista: {{ venta.fecha_entrega_prevista|fecha }}
+  {% endif %}
+  {% if config.pie_ticket %}
+  <hr>
+  <div class="centro" style="white-space: pre-line">{{ config.pie_ticket }}</div>
+  {% endif %}
+</div>
+</body>
+</html>

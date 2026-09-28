@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "macros.html" import campo %}
+{% block titulo %}{{ 'Editar cliente' if cliente.id else 'Nuevo cliente' }}{% endblock %}
+{% block contenido %}
+<div class="cabecera">
+  <h1>{{ 'Editar cliente' if cliente.id else 'Nuevo cliente' }}</h1>
+</div>
+<div class="panel">
+  <form class="campos" method="post">
+    {{ campo('nombre', 'Nombre *', cliente.nombre, extra='required autofocus') }}
+    {{ campo('apellidos', 'Apellidos', cliente.apellidos) }}
+    {{ campo('dni', 'DNI / NIE', cliente.dni) }}
+    {{ campo('fecha_nacimiento', 'Fecha de nacimiento', cliente.fecha_nacimiento, tipo='date') }}
+    {{ campo('telefono', 'Teléfono', cliente.telefono, tipo='tel') }}
+    {{ campo('email', 'Email', cliente.email, tipo='email') }}
+    {{ campo('direccion', 'Dirección', cliente.direccion) }}
+    {{ campo('localidad', 'Localidad', cliente.localidad) }}
+    {{ campo('codigo_postal', 'Código postal', cliente.codigo_postal) }}
+    <div class="ancho">
+      <label for="notas">Notas</label>
+      <textarea id="notas" name="notas" placeholder="Antecedentes, preferencias, observaciones…">{{ cliente.notas or '' }}</textarea>
+    </div>
+    <div class="ancho">
+      <label class="check"><input type="checkbox" name="acepta_comunicaciones" value="1" {{ 'checked' if cliente.acepta_comunicaciones }}> Acepta recibir comunicaciones (avisos de revisión, promociones)</label>
+    </div>
+    <div class="ancho acciones">
+      <button type="submit">Guardar</button>
+      <a class="boton secundario" href="{{ url_for('clientes.ficha', cliente_id=cliente.id) if cliente.id else url_for('clientes.lista') }}">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

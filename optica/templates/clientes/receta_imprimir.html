@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Receta {{ cliente.nombre }} {{ cliente.apellidos }} · {{ receta.fecha|fecha }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+  <style>
+    body { background: #fff; }
+    .hoja { max-width: 760px; margin: 24px auto; padding: 0 24px; }
+    .cab { display: flex; justify-content: space-between; border-bottom: 2px solid #17324d; padding-bottom: 12px; margin-bottom: 20px; }
+    .firma { margin-top: 60px; border-top: 1px solid #999; width: 240px; text-align: center; padding-top: 4px; color: #555; }
+  </style>
+</head>
+<body>
+<div class="hoja">
+  <p class="no-imprimir"><button onclick="window.print()">Imprimir</button></p>
+  <div class="cab">
+    <div>
+      <strong style="font-size: 20px">{{ tienda.nombre or 'Óptica' }}</strong><br>
+      <span class="suave">{{ tienda.direccion }}{% if tienda.telefono %} · Tel. {{ tienda.telefono }}{% endif %}</span>
+    </div>
+    <div style="text-align:right">
+      <strong>Prescripción optométrica</strong><br>
+      {{ receta.fecha|fecha }}
+    </div>
+  </div>
+
+  <dl class="datos" style="margin-bottom: 20px">
+    <dt>Paciente</dt><dd>{{ cliente.nombre }} {{ cliente.apellidos }}</dd>
+    {% if cliente.dni %}<dt>DNI</dt><dd>{{ cliente.dni }}</dd>{% endif %}
+    {% if cliente.fecha_nacimiento %}<dt>Fecha de nacimiento</dt><dd>{{ cliente.fecha_nacimiento|fecha }}</dd>{% endif %}
+    <dt>Tipo</dt><dd>{{ receta.tipo }}</dd>
+  </dl>
+
+  <table class="graduacion" style="border: 1px solid #ccc">
+    <thead><tr><th></th>{% for _, etiqueta in campos_ojo %}<th>{{ etiqueta }}</th>{% endfor %}</tr></thead>
+    <tbody>
+    {% for ojo, nombre in [('od', 'OD'), ('oi', 'OI')] %}
+      <tr><td>{{ nombre }}</td>{% for c, _ in campos_ojo %}<td>{{ receta[ojo ~ '_' ~ c] }}</td>{% endfor %}</tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% if receta.lc_marca or receta.lc_curva_base or receta.lc_diametro %}
+    <p><strong>Lentes de contacto:</strong> {{ receta.lc_marca }}{% if receta.lc_curva_base %} · CB {{ receta.lc_curva_base }}{% endif %}{% if receta.lc_diametro %} · Ø {{ receta.lc_diametro }}{% endif %}</p>
+  {% endif %}
+  {% if receta.observaciones %}<p style="white-space: pre-line"><strong>Observaciones:</strong> {{ receta.observaciones }}</p>{% endif %}
+  {% if receta.proxima_revision %}<p><strong>Próxima revisión:</strong> {{ receta.proxima_revision|fecha }}</p>{% endif %}
+
+  <div class="firma">{{ receta.optometrista or 'Optometrista' }}</div>
+</div>
+</body>
+</html>

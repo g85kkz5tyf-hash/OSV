@@ -1,0 +1,26 @@
+{% macro estado(texto) -%}
+<span class="etiqueta-estado estado-{{ texto|replace(' ', '-') }}">{{ texto }}</span>
+{%- endmacro %}
+
+{% macro campo(nombre, etiqueta, valor='', tipo='text', clase='', extra='') -%}
+<div class="{{ clase }}">
+  <label for="{{ nombre }}">{{ etiqueta }}</label>
+  <input id="{{ nombre }}" name="{{ nombre }}" type="{{ tipo }}" value="{{ valor if valor is not none else '' }}" {{ extra|safe }}>
+</div>
+{%- endmacro %}
+
+{% macro tabla_graduacion(receta, campos_ojo) -%}
+<table class="graduacion">
+  <thead>
+    <tr><th></th>{% for _, etiqueta in campos_ojo %}<th>{{ etiqueta }}</th>{% endfor %}</tr>
+  </thead>
+  <tbody>
+    {% for ojo, nombre in [('od', 'OD'), ('oi', 'OI')] %}
+    <tr>
+      <td>{{ nombre }}</td>
+      {% for c, _ in campos_ojo %}<td>{{ receta[ojo ~ '_' ~ c] or '—' }}</td>{% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{%- endmacro %}

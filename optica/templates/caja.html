@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block titulo %}Caja{% endblock %}
+{% block contenido %}
+<div class="cabecera">
+  <h1>Caja del {{ dia|fecha }}</h1>
+  <div class="acciones no-imprimir">
+    <form class="filtros" method="get" style="margin:0">
+      <div><label for="dia">Día</label><input id="dia" type="date" name="dia" value="{{ dia }}" onchange="this.form.submit()"></div>
+    </form>
+    <button class="secundario" onclick="window.print()">Imprimir</button>
+  </div>
+</div>
+
+<div class="tarjetas">
+  {% for metodo, importe in por_metodo.items() %}
+  <div class="tarjeta"><div class="etiqueta">{{ metodo }}</div><div class="valor">{{ importe|euros }}</div></div>
+  {% endfor %}
+  <div class="tarjeta" style="border-color: var(--primario)"><div class="etiqueta">Total cobrado</div><div class="valor">{{ total|euros }}</div></div>
+</div>
+
+<div class="panel">
+  <h2>Movimientos del día</h2>
+  {% if pagos %}
+  <div class="tabla-scroll">
+  <table>
+    <thead><tr><th>Hora</th><th>Venta</th><th>Cliente</th><th>Forma de pago</th><th class="num">Importe</th></tr></thead>
+    <tbody>
+    {% for p in pagos %}
+      <tr>
+        <td>{{ p.fecha[11:16] }}</td>
+        <td><a href="{{ url_for('ventas.detalle', venta_id=p.venta_id) }}">{{ p.numero }}</a></td>
+        <td>{{ p.cliente_nombre or 'Mostrador' }}</td>
+        <td>{{ p.metodo }}{{ ' (devolución)' if p.importe < 0 }}</td>
+        <td class="num {{ 'alerta' if p.importe < 0 }}">{{ p.importe|euros }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="vacio">No hay cobros este día.</p>{% endif %}
+</div>
+{% endblock %}
