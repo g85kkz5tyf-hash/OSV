@@ -197,6 +197,8 @@ def nueva():
             return render_template("ventas/nueva.html", **contexto_nueva(request.form))
         db.commit()
         flash("Venta registrada.", "ok")
+        if f.get("accion") == "orden":
+            return redirect(url_for("ventas.orden", venta_id=venta_id))
         return redirect(url_for("ventas.detalle", venta_id=venta_id))
     return render_template("ventas/nueva.html", **contexto_nueva(None))
 
@@ -261,6 +263,23 @@ def ticket(venta_id):
     return render_template(
         "ventas/ticket.html", venta=venta, lineas=lineas, pagos=pagos, cliente=cliente,
         desglose=desglose_iva(lineas), config=get_config(db),
+    )
+
+
+@bp.route("/<int:venta_id>/orden")
+def orden(venta_id):
+    """Orden de venta en A4 para imprimir, con recuadros de seña y saldo a mano."""
+    db = get_db()
+    venta = obtener_venta(venta_id)
+    lineas = db.execute("SELECT * FROM lineas_venta WHERE venta_id = ? ORDER BY id", (venta_id,)).fetchall()
+    cliente = receta = None
+    if venta["cliente_id"]:
+        cliente = db.execute("SELECT * FROM clientes WHERE id = ?", (venta["cliente_id"],)).fetchone()
+    if venta["receta_id"]:
+        receta = db.execute("SELECT * FROM recetas WHERE id = ?", (venta["receta_id"],)).fetchone()
+    return render_template(
+        "ventas/orden.html", venta=venta, lineas=lineas, cliente=cliente, receta=receta,
+        campos_ojo=CAMPOS_OJO, config=get_config(db),
     )
 
 

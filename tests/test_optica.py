@@ -293,3 +293,22 @@ def test_migracion_iva_21_a_22(tmp_path):
     create_app({"DATABASE": ruta})  # al volver a abrir el programa
     assert conn.execute("SELECT iva FROM productos").fetchone()[0] == 22
     conn.close()
+
+
+def test_orden_de_venta(client, db):
+    cid = crear_cliente(client)
+    client.post(f"/clientes/{cid}/recetas/nueva", data={"fecha": "2026-09-01", "od_esfera": "+1,50", "oi_esfera": "-2,00"})
+    pid = crear_producto(client)
+    r = vender(client, [{"producto_id": str(pid), "descripcion": "Ray-Ban RB5154", "precio": "4.500"}],
+               cliente_id=str(cid), receta_id="1", fecha_entrega_prevista="2026-10-05", accion="orden")
+    assert r.status_code == 302 and r.headers["Location"].endswith("/ventas/1/orden")
+    html = client.get("/ventas/1/orden").get_data(as_text=True)
+    for texto in ["ORDEN DE VENTA", "Ana García López", "600111222", "Ray-Ban RB5154", "+1,50", "-2,00",
+                  "05/10/2026", "$ 4.500,00", "SEÑA", "SALDO"]:
+        assert texto in html, texto
+    assert "Generar orden de venta" in client.get("/ventas/1").get_data(as_text=True)
+
+
+def test_orden_de_venta_sin_cliente_ni_receta(client):
+    vender(client, [{"descripcion": "Líquido", "precio": "300"}])
+    assert client.get("/ventas/1/orden").status_code == 200

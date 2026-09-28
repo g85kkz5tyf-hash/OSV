@@ -77,7 +77,8 @@
   </div>
 
   <div class="acciones">
-    <button type="submit">Registrar venta</button>
+    <button type="submit" name="accion" value="orden">Registrar y generar orden de venta</button>
+    <button type="submit" class="secundario">Registrar venta</button>
     <a class="boton secundario" href="{{ url_for('ventas.lista') }}">Cancelar</a>
   </div>
 </form>

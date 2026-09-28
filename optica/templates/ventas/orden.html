@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Orden de venta {{ venta.numero }}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 14px; color: #000; margin: 0; background: #eef1f4; }
+    .hoja { width: 210mm; min-height: 297mm; margin: 16px auto; padding: 16mm 16mm; background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.12); }
+    .cab { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 16px; }
+    .cab .tienda strong { font-size: 20px; }
+    .cab .titulo { text-align: right; }
+    .cab .titulo h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: .03em; }
+    h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; margin: 18px 0 6px; color: #333; }
+    .datos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; }
+    .dato { border-bottom: 1px solid #999; padding: 4px 0; min-height: 28px; }
+    .dato span { color: #555; font-size: 12px; margin-right: 6px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #999; padding: 6px 8px; text-align: left; vertical-align: top; }
+    th { background: #f0f0f0; font-size: 12px; }
+    .num { text-align: right; white-space: nowrap; }
+    table.graduacion th, table.graduacion td { text-align: center; }
+    table.graduacion td:first-child, table.graduacion th:first-child { text-align: left; font-weight: 700; width: 50px; }
+    .notas { border: 1px solid #999; padding: 8px; white-space: pre-line; min-height: 40px; }
+    .importes { width: 55%; margin-left: auto; margin-top: 20px; }
+    .fila-importe { display: flex; align-items: stretch; margin-bottom: 10px; }
+    .fila-importe .etiqueta { width: 40%; font-weight: 700; font-size: 16px; display: flex; align-items: center; }
+    .fila-importe .caja { flex: 1; border: 2px solid #000; min-height: 44px; padding: 8px 12px; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: flex-end; }
+    .fila-importe.total .caja { background: #f0f0f0; }
+    .fila-importe .caja.vacia { justify-content: flex-start; font-weight: normal; }
+    .barra { max-width: 210mm; margin: 16px auto 0; display: flex; gap: 8px; }
+    .barra button, .barra a { font: inherit; font-weight: 600; padding: 8px 16px; border-radius: 6px; border: 1px solid #1c6ea4; background: #1c6ea4; color: #fff; cursor: pointer; text-decoration: none; }
+    .barra a { background: #fff; color: #1c6ea4; }
+    @media print {
+      body { background: #fff; }
+      .barra { display: none; }
+      .hoja { margin: 0; box-shadow: none; width: auto; min-height: 0; padding: 0; }
+      @page { size: A4; margin: 14mm; }
+    }
+  </style>
+</head>
+<body>
+<div class="barra">
+  <button onclick="window.print()">Imprimir</button>
+  <a href="{{ url_for('ventas.detalle', venta_id=venta.id) }}">Volver a la venta</a>
+</div>
+
+<div class="hoja">
+  <div class="cab">
+    <div class="tienda">
+      <strong>{{ config.nombre or 'Óptica' }}</strong><br>
+      {% if config.nif %}RUT: {{ config.nif }}<br>{% endif %}
+      {% if config.direccion %}{{ config.direccion }}<br>{% endif %}
+      {% if config.telefono %}Tel. {{ config.telefono }}{% endif %}
+    </div>
+    <div class="titulo">
+      <h1>ORDEN DE VENTA</h1>
+      Nº {{ venta.numero }}
+    </div>
+  </div>
+
+  <div class="datos">
+    <div class="dato"><span>Cliente:</span>{{ (cliente.nombre ~ ' ' ~ cliente.apellidos) if cliente else '' }}</div>
+    <div class="dato"><span>Teléfono:</span>{{ cliente.telefono if cliente else '' }}</div>
+    <div class="dato"><span>Fecha de venta:</span>{{ venta.fecha[:10]|fecha }}</div>
+    <div class="dato"><span>Fecha de entrega:</span>{{ venta.fecha_entrega_prevista|fecha }}</div>
+  </div>
+
+  <h2>Productos</h2>
+  <table>
+    <thead><tr><th style="width: 60px" class="num">Cant.</th><th>Descripción</th><th style="width: 130px" class="num">Importe</th></tr></thead>
+    <tbody>
+    {% for l in lineas %}
+      <tr>
+        <td class="num">{{ l.cantidad }}</td>
+        <td>{{ l.descripcion }}{% if l.descuento_pct %} <small>(dto. {{ l.descuento_pct }} %)</small>{% endif %}</td>
+        <td class="num">{{ l.importe|moneda }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Receta{% if receta %} · {{ receta.tipo }} · {{ receta.fecha|fecha }}{% if receta.optometrista %} · {{ receta.optometrista }}{% endif %}{% endif %}</h2>
+  <table class="graduacion">
+    <thead><tr><th></th>{% for _, etiqueta in campos_ojo %}<th>{{ etiqueta }}</th>{% endfor %}</tr></thead>
+    <tbody>
+    {% for ojo, nombre in [('od', 'OD'), ('oi', 'OI')] %}
+      <tr><td>{{ nombre }}</td>{% for c, _ in campos_ojo %}<td>{{ receta[ojo ~ '_' ~ c] if receta else '' }}</td>{% endfor %}</tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if receta and (receta.lc_marca or receta.lc_curva_base or receta.lc_diametro) %}
+    <p>Lentes de contacto: {{ receta.lc_marca }}{% if receta.lc_curva_base %} · CB {{ receta.lc_curva_base }}{% endif %}{% if receta.lc_diametro %} · Ø {{ receta.lc_diametro }}{% endif %}</p>
+  {% endif %}
+  {% if receta and receta.observaciones %}<p style="white-space: pre-line">Observaciones de la receta: {{ receta.observaciones }}</p>{% endif %}
+
+  {% if venta.notas %}
+  <h2>Notas</h2>
+  <div class="notas">{{ venta.notas }}</div>
+  {% endif %}
+
+  <div class="importes">
+    <div class="fila-importe total"><div class="etiqueta">PRECIO TOTAL</div><div class="caja">{{ venta.total|moneda }}</div></div>
+    <div class="fila-importe"><div class="etiqueta">SEÑA</div><div class="caja vacia"></div></div>
+    <div class="fila-importe"><div class="etiqueta">SALDO</div><div class="caja vacia"></div></div>
+  </div>
+</div>
+</body>
+</html>
