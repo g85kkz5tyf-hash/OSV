@@ -4,3 +4,5 @@ __pycache__/
 datos/
 .pytest_cache/
 GestionOptica.zip
+version.txt
+optica.anterior/

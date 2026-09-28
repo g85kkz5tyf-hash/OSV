@@ -60,6 +60,15 @@ Entra en "Configuración" y escribe el nombre, RUT, dirección y teléfono de
 la óptica. Aparecerán en los tickets y en las recetas impresas.
 
 
+ACTUALIZACIONES
+---------------
+El programa se actualiza solo: cada vez que lo abres, busca en internet
+si hay una versión nueva y la instala en unos segundos. Tus datos
+(clientes, ventas, stock) no se tocan, y antes de actualizar se guarda
+una copia automática en la carpeta "datos/copias".
+Si no hay internet, el programa se abre igual con la versión que tienes.
+
+
 COPIAS DE SEGURIDAD
 -------------------
 Todos tus datos están en la carpeta "datos" dentro de la carpeta del

@@ -25,6 +25,8 @@ echo   NO CIERRES ESTA VENTANA mientras lo uses.
 echo   Para salir, cierra esta ventana.
 echo  ============================================================
 echo.
+.venv\Scripts\python actualizar.py
+echo.
 .venv\Scripts\python iniciar.py
 pause
 exit /b

@@ -24,6 +24,8 @@ if [ ! -x .venv/bin/python ]; then
     fi
 fi
 
+.venv/bin/python actualizar.py
+
 echo ""
 echo "============================================================"
 echo " El programa se está abriendo en el navegador."
