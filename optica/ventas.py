@@ -2,7 +2,7 @@ from datetime import date
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
-from .constantes import COLORES_EJECUCION, LABORATORIOS, TALLER_PROPIO, CAMPOS_OJO, CATEGORIA_ARMAZON, MEDIDAS_ARMAZON, ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO, TIPOS_IVA
+from .constantes import CODIGO_ARMAZON_PROPIO, COLORES_EJECUCION, LABORATORIOS, TALLER_PROPIO, CAMPOS_OJO, CATEGORIA_ARMAZON, MEDIDAS_ARMAZON, ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO, TIPOS_IVA
 from .db import get_config, get_db
 from .productos import nombre_producto, registrar_movimiento
 from .utils import desglose_iva, importe_linea, parse_entero, parse_importe
@@ -115,6 +115,10 @@ def lista():
     )
 
 
+def es_armazon_propio(producto):
+    return producto is not None and producto["codigo"] == CODIGO_ARMAZON_PROPIO
+
+
 def leer_lineas_formulario(db):
     """Lee las líneas enviadas por el formulario y las valida contra el stock."""
     f = request.form
@@ -124,6 +128,8 @@ def leer_lineas_formulario(db):
     precios = f.getlist("precio")
     descuentos = f.getlist("descuento")
     ivas = f.getlist("iva")
+    # Medidas del armazón propio: cada línea envía sus cuatro campos (vacíos si no aplica)
+    medidas = {campo: f.getlist(f"medida_{campo}") for campo, _, _ in MEDIDAS_ARMAZON}
     lineas = []
     necesidades = {}
     for i, descripcion in enumerate(descripciones):
@@ -169,6 +175,8 @@ def leer_lineas_formulario(db):
             "descuento_pct": descuento,
             "iva": iva,
             "importe": importe_linea(cantidad, precio, descuento),
+            **{campo: (valores[i].strip() if i < len(valores) and es_armazon_propio(producto) else "")
+               for campo, valores in medidas.items()},
         })
     if not lineas:
         raise ErrorVenta("Añade al menos una línea a la venta.")
@@ -191,9 +199,11 @@ def crear_venta(db, cliente_id, receta_id, lineas, estado, entrega_prevista, not
         producto = l["producto"]
         db.execute(
             "INSERT INTO lineas_venta (venta_id, producto_id, descripcion, cantidad, precio_unitario,"
-            " descuento_pct, iva, importe) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            " descuento_pct, iva, importe, calibre, puente, diagonal, altura)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (venta_id, producto["id"] if producto else None, l["descripcion"], l["cantidad"],
-             l["precio_unitario"], l["descuento_pct"], l["iva"], l["importe"]),
+             l["precio_unitario"], l["descuento_pct"], l["iva"], l["importe"],
+             l["calibre"], l["puente"], l["diagonal"], l["altura"]),
         )
         if producto and producto["controla_stock"]:
             registrar_movimiento(db, producto["id"], -l["cantidad"], "venta", f"Venta {numero}", venta_id)
@@ -254,9 +264,13 @@ def contexto_nueva(form):
             (cliente["id"],),
         ).fetchall()
     lineas = []
+    propio = db.execute("SELECT id FROM productos WHERE codigo = ?", (CODIGO_ARMAZON_PROPIO,)).fetchone()
     if form:
         for i, descripcion in enumerate(form.getlist("descripcion")):
+            medidas = {campo: (form.getlist(f"medida_{campo}")[i:i + 1] or [""])[0] for campo, _, _ in MEDIDAS_ARMAZON}
             lineas.append({
+                "armazon_propio": bool(propio) and form.getlist("producto_id")[i] == str(propio["id"]),
+                **medidas,
                 "producto_id": form.getlist("producto_id")[i],
                 "descripcion": descripcion,
                 "cantidad": form.getlist("cantidad")[i],
@@ -267,7 +281,7 @@ def contexto_nueva(form):
     return {
         "cliente": cliente, "recetas": recetas, "form": form or {}, "lineas": lineas,
         "estados": [e for e in ESTADOS_VENTA if e != "Anulada"], "metodos": METODOS_PAGO,
-        "tipos_iva": TIPOS_IVA, **contexto_ejecucion(),
+        "tipos_iva": TIPOS_IVA, **contexto_ejecucion(), "medidas": MEDIDAS_ARMAZON,
         "cobros": list(zip(form.getlist("pago"), form.getlist("metodo"))) if form else [("", METODOS_PAGO[0])],
     }
 
@@ -276,7 +290,11 @@ def contexto_nueva(form):
 def detalle(venta_id):
     db = get_db()
     venta = obtener_venta(venta_id)
-    lineas = db.execute("SELECT * FROM lineas_venta WHERE venta_id = ? ORDER BY id", (venta_id,)).fetchall()
+    lineas = db.execute(
+        "SELECT l.*, p.codigo = ? AS armazon_propio FROM lineas_venta l"
+        " LEFT JOIN productos p ON p.id = l.producto_id WHERE l.venta_id = ? ORDER BY l.id",
+        (CODIGO_ARMAZON_PROPIO, venta_id),
+    ).fetchall()
     pagos = db.execute("SELECT * FROM pagos WHERE venta_id = ? ORDER BY id", (venta_id,)).fetchall()
     cliente = receta = None
     if venta["cliente_id"]:
@@ -287,6 +305,7 @@ def detalle(venta_id):
         "ventas/detalle.html", venta=venta, lineas=lineas, pagos=pagos, cliente=cliente,
         receta=receta, estados=[e for e in ESTADOS_VENTA if e != "Anulada"], metodos=METODOS_PAGO,
         desglose=desglose_iva(lineas), campos_ojo=CAMPOS_OJO, **contexto_ejecucion(),
+        medidas=MEDIDAS_ARMAZON,
     )
 
 
@@ -311,10 +330,13 @@ def orden(venta_id):
     db = get_db()
     venta = obtener_venta(venta_id)
     lineas = db.execute(
-        "SELECT l.*, p.categoria, p.calibre, p.puente, p.diagonal, p.altura"
-        " FROM lineas_venta l LEFT JOIN productos p ON p.id = l.producto_id"
-        " WHERE l.venta_id = ? ORDER BY l.id",
-        (venta_id,),
+        "SELECT l.id, l.descripcion, l.cantidad, l.descuento_pct, l.importe, p.categoria,"
+        + ", ".join(
+            f" CASE WHEN p.codigo = :propio THEN l.{c} ELSE p.{c} END AS {c}" for c, _, _ in MEDIDAS_ARMAZON
+        )
+        + " FROM lineas_venta l LEFT JOIN productos p ON p.id = l.producto_id"
+        " WHERE l.venta_id = :venta ORDER BY l.id",
+        {"propio": CODIGO_ARMAZON_PROPIO, "venta": venta_id},
     ).fetchall()
     cliente = receta = None
     if venta["cliente_id"]:
@@ -390,6 +412,28 @@ def cambiar_estado(venta_id):
     db.commit()
     flash(f"Venta {venta['numero']}: estado cambiado a «{nuevo}».", "ok")
     return redirect(destino_seguro(request.form.get("volver", ""), url_for("main.inicio")))
+
+
+@bp.route("/<int:venta_id>/medidas/<int:linea_id>", methods=["POST"])
+def medidas_armazon_propio(venta_id, linea_id):
+    """Cargar o corregir las medidas del armazón que trajo el cliente."""
+    obtener_venta(venta_id)
+    db = get_db()
+    linea = db.execute(
+        "SELECT l.id FROM lineas_venta l JOIN productos p ON p.id = l.producto_id"
+        " WHERE l.id = ? AND l.venta_id = ? AND p.codigo = ?",
+        (linea_id, venta_id, CODIGO_ARMAZON_PROPIO),
+    ).fetchone()
+    if linea is None:
+        abort(404)
+    campos = [c for c, _, _ in MEDIDAS_ARMAZON]
+    db.execute(
+        f"UPDATE lineas_venta SET {', '.join(f'{c} = ?' for c in campos)} WHERE id = ?",
+        [*(request.form.get(c, "").strip() for c in campos), linea_id],
+    )
+    db.commit()
+    flash("Medidas del armazón propio guardadas.", "ok")
+    return redirect(destino_seguro(request.form.get("volver", ""), url_for("ventas.detalle", venta_id=venta_id)))
 
 
 @bp.route("/<int:venta_id>/numero-trabajo", methods=["POST"])

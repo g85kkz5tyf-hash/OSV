@@ -56,3 +56,6 @@ COLORES_EJECUCION = {
     "Rodenstock": "#1d4ed8",   # azul
     "Jiki": "#7e22ce",         # púrpura
 }
+
+# Producto especial para cuando el cliente trae su propio armazón (solo compra cristales)
+CODIGO_ARMAZON_PROPIO = "ARMAZON-PROPIO"

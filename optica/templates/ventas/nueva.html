@@ -84,6 +84,12 @@
       <input type="hidden" name="producto_id">
       <input name="descripcion" required>
       <small class="suave info"></small>
+      <div class="medidas-linea" hidden>
+        <span class="suave">Medidas del armazón del cliente:</span>
+        {% for nombre, etiqueta, inicial in medidas %}
+        <label>{{ inicial|lower }} <input name="medida_{{ nombre }}" inputmode="decimal" title="{{ etiqueta }}" aria-label="{{ etiqueta }}"></label>
+        {% endfor %}
+      </div>
     </td>
     <td><input name="cantidad" type="number" min="1" step="1" value="1" required></td>
     <td><input name="precio" inputmode="decimal" required></td>
@@ -160,6 +166,13 @@ function anadirLinea(datos = {}) {
     $("[name=iva]", tr).insertAdjacentHTML("afterend", `<input type="hidden" name="iva" value="${datos.iva}">`);
     $(".info", tr).textContent = datos.info || "";
   }
+  if (datos.armazon_propio) {
+    // El cliente trae su armazón: se piden sus medidas para la orden de trabajo
+    $(".medidas-linea", tr).hidden = false;
+    for (const campo of ["calibre", "puente", "diagonal", "altura"]) {
+      $(`[name=medida_${campo}]`, tr).value = datos[campo] || "";
+    }
+  }
   tr.addEventListener("input", recalcular);
   $(".quitar", tr).addEventListener("click", () => { tr.remove(); recalcular(); });
   tbody.appendChild(tr);
@@ -218,10 +231,12 @@ buscador($("#buscar-producto"), $("#resultados-producto"), URL_PRODUCTOS,
   p => `<strong>${esc(p.nombre)}</strong> — ${moneda(p.precio)}<br><small>${esc(p.codigo)} · ${esc(p.categoria)}${p.controla_stock ? ` · Stock: ${p.stock}` : ""}</small>`,
   p => {
     if (p.controla_stock && p.stock <= 0 && !confirm(`«${p.nombre}» no tiene stock. ¿Añadirlo igualmente?`)) return;
-    anadirLinea({
+    const tr = anadirLinea({
       producto_id: p.id, descripcion: p.nombre, precio: importeTexto(p.precio), iva: p.iva,
       info: `${p.codigo}${p.controla_stock ? ` · Stock: ${p.stock}` : ""}`,
+      armazon_propio: p.armazon_propio,
     });
+    if (p.armazon_propio) $("[name=medida_calibre]", tr).focus();
   });
 
 buscador($("#buscar-cliente"), $("#resultados-cliente"), URL_CLIENTES,

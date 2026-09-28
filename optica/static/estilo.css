@@ -226,3 +226,9 @@ tr.fila-cobro-rapido td { background: #f5f9fd; }
 .aviso-atrasados p { margin: 0 0 12px; }
 .aviso-atrasados table { background: #fff; border-radius: 6px; }
 .aviso-atrasados th { background: #fbe3e3; color: #7f1d1d; }
+
+/* Medidas del armazón propio en la línea de venta */
+.medidas-linea { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-top: 6px; font-size: 13px; }
+.medidas-linea label { display: flex; align-items: center; gap: 4px; margin: 0; font-weight: 700; color: var(--texto); }
+.medidas-linea input { width: 64px; padding: 4px 6px; }
+.medidas-linea[hidden] { display: none; }

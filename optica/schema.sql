@@ -109,7 +109,12 @@ CREATE TABLE IF NOT EXISTS lineas_venta (
     precio_unitario INTEGER NOT NULL,
     descuento_pct INTEGER NOT NULL DEFAULT 0,
     iva INTEGER NOT NULL DEFAULT 22,
-    importe INTEGER NOT NULL
+    importe INTEGER NOT NULL,
+    -- Medidas del armazón que trae el cliente (solo en la línea «Armazón propio»)
+    calibre TEXT NOT NULL DEFAULT '',
+    puente TEXT NOT NULL DEFAULT '',
+    diagonal TEXT NOT NULL DEFAULT '',
+    altura TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS pagos (

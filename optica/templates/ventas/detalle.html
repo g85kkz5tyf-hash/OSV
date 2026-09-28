@@ -34,7 +34,18 @@
     <tbody>
     {% for l in lineas %}
       <tr>
-        <td>{% if l.producto_id %}<a href="{{ url_for('productos.detalle', producto_id=l.producto_id) }}">{{ l.descripcion }}</a>{% else %}{{ l.descripcion }}{% endif %}</td>
+        <td>
+          {% if l.producto_id %}<a href="{{ url_for('productos.detalle', producto_id=l.producto_id) }}">{{ l.descripcion }}</a>{% else %}{{ l.descripcion }}{% endif %}
+          {% if l.armazon_propio %}
+          <form method="post" action="{{ url_for('ventas.medidas_armazon_propio', venta_id=venta.id, linea_id=l.id) }}" class="medidas-linea">
+            <span class="suave">Medidas del armazón del cliente:</span>
+            {% for nombre, etiqueta, inicial in medidas %}
+            <label>{{ inicial|lower }} <input name="{{ nombre }}" value="{{ l[nombre] }}" inputmode="decimal" title="{{ etiqueta }}" aria-label="{{ etiqueta }}"></label>
+            {% endfor %}
+            <button class="secundario peque">Guardar medidas</button>
+          </form>
+          {% endif %}
+        </td>
         <td class="num">{{ l.cantidad }}</td>
         <td class="num">{{ l.precio_unitario|moneda }}</td>
         <td class="num">{{ l.descuento_pct ~ ' %' if l.descuento_pct else '' }}</td>

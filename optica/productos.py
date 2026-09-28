@@ -3,7 +3,7 @@ import io
 
 from flask import Blueprint, Response, abort, flash, jsonify, redirect, render_template, request, url_for
 
-from .constantes import CATEGORIA_ARMAZON, CATEGORIAS, MEDIDAS_ARMAZON, TIPOS_IVA
+from .constantes import CODIGO_ARMAZON_PROPIO, CATEGORIA_ARMAZON, CATEGORIAS, MEDIDAS_ARMAZON, TIPOS_IVA
 from .db import get_db
 from .utils import formato_importe, parse_entero, parse_importe
 
@@ -275,6 +275,7 @@ def api_buscar():
             "id": p["id"], "codigo": p["codigo"], "categoria": p["categoria"],
             "nombre": nombre_producto(p), "precio": p["precio_venta"], "iva": p["iva"],
             "stock": p["stock"], "controla_stock": bool(p["controla_stock"]),
+            "armazon_propio": p["codigo"] == CODIGO_ARMAZON_PROPIO,
         }
         for p in productos
     ])

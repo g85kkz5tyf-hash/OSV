@@ -148,7 +148,7 @@ def test_codigo_producto_duplicado(client, db):
     r = client.post("/productos/nuevo", data={"codigo": "X1", "categoria": "Armazón"})
     assert r.status_code == 200
     assert "Ya existe" in r.get_data(as_text=True)
-    assert db.execute("SELECT COUNT(*) FROM productos").fetchone()[0] == 1
+    assert db.execute("SELECT COUNT(*) FROM productos WHERE codigo = 'X1'").fetchone()[0] == 1
 
 
 def test_stock_bajo_en_inicio(client):
@@ -227,9 +227,9 @@ def test_receta_de_otro_cliente_rechazada(client, db):
 def test_anular_venta_repone_stock_y_devuelve_pagos(client, db):
     pid = crear_producto(client, stock="2")
     vender(client, [{"producto_id": str(pid), "precio": "120"}], pago="120", metodo="Tarjeta")
-    assert db.execute("SELECT stock FROM productos").fetchone()[0] == 1
+    assert db.execute("SELECT stock FROM productos WHERE id = ?", (pid,)).fetchone()[0] == 1
     client.post("/ventas/1/anular", data={"motivo": "Devolución"})
-    assert db.execute("SELECT stock FROM productos").fetchone()[0] == 2
+    assert db.execute("SELECT stock FROM productos WHERE id = ?", (pid,)).fetchone()[0] == 2
     assert db.execute("SELECT estado FROM ventas").fetchone()[0] == "Anulada"
     pagos = db.execute("SELECT importe, metodo FROM pagos ORDER BY id").fetchall()
     assert [tuple(p) for p in pagos] == [(12000, "Tarjeta"), (-12000, "Tarjeta")]
@@ -572,3 +572,42 @@ def test_aviso_de_entregas_vencidas(client, db):
     assert 'class="aviso-atrasados"' in client.get("/").get_data(as_text=True)
     client.post("/ventas/1/cambiar-estado", data={"estado": "Listo para recoger"})
     assert 'class="aviso-atrasados"' not in client.get("/").get_data(as_text=True)
+
+
+def test_armazon_propio_con_medidas_en_la_orden(client, db):
+    propio = db.execute("SELECT * FROM productos WHERE codigo = 'ARMAZON-PROPIO'").fetchone()
+    assert propio["precio_coste"] == 0 and propio["precio_venta"] == 0 and propio["controla_stock"] == 0
+    assert client.get("/productos/api/buscar?q=propio").get_json()[0]["armazon_propio"] is True
+
+    cid = crear_cliente(client)
+    datos = {
+        "cliente_id": str(cid), "producto_id": [str(propio["id"]), ""],
+        "descripcion": ["Armazón propio", "Cristales monofocales"], "cantidad": ["1", "1"],
+        "precio": ["0", "3500"], "descuento": ["0", "0"], "iva": ["22", "22"],
+        "medida_calibre": ["52", "99"], "medida_puente": ["18", ""], "medida_diagonal": ["", ""],
+        "medida_altura": ["38", ""], "estado": "En taller", "pago": "", "metodo": "Efectivo",
+    }
+    assert client.post("/ventas/nueva", data=datos).status_code == 302
+    lineas = db.execute("SELECT calibre, puente, diagonal, altura FROM lineas_venta ORDER BY id").fetchall()
+    assert tuple(lineas[0]) == ("52", "18", "", "38")
+    assert tuple(lineas[1]) == ("", "", "", "")  # la línea de cristales no guarda medidas
+    orden = client.get("/ventas/1/orden").get_data(as_text=True)
+    assert "<b>c</b> 52" in orden and "<b>p</b> 18" in orden and "<b>d</b> ____" in orden and "<b>a</b> 38" in orden
+
+    # completar la diagonal desde la ficha de la venta
+    linea_id = db.execute("SELECT id FROM lineas_venta ORDER BY id").fetchone()[0]
+    assert "Guardar medidas" in client.get("/ventas/1").get_data(as_text=True)
+    client.post(f"/ventas/1/medidas/{linea_id}", data={"calibre": "52", "puente": "18", "diagonal": "54", "altura": "38"})
+    assert "<b>d</b> 54" in client.get("/ventas/1/orden").get_data(as_text=True)
+    # la línea de cristales no admite medidas
+    otra = db.execute("SELECT id FROM lineas_venta ORDER BY id DESC").fetchone()[0]
+    assert client.post(f"/ventas/1/medidas/{otra}", data={"calibre": "1"}).status_code == 404
+
+
+def test_armazon_propio_no_se_duplica(tmp_path):
+    ruta = str(tmp_path / "x.db")
+    create_app({"DATABASE": ruta})
+    create_app({"DATABASE": ruta})
+    conn = connect(ruta)
+    assert conn.execute("SELECT COUNT(*) FROM productos WHERE codigo = 'ARMAZON-PROPIO'").fetchone()[0] == 1
+    conn.close()

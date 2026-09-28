@@ -36,12 +36,18 @@ def init_db(path):
     nuevas_columnas = {
         "productos": ["calibre", "puente", "diagonal", "altura"],
         "ventas": ["ejecucion", "numero_trabajo"],  # taller o laboratorio, y nº del laboratorio
+        "lineas_venta": ["calibre", "puente", "diagonal", "altura"],  # armazón propio del cliente
     }
     for tabla, nuevas in nuevas_columnas.items():
         columnas = {fila[1] for fila in conn.execute(f"PRAGMA table_info({tabla})")}
         for columna in nuevas:
             if columna not in columnas:
                 conn.execute(f"ALTER TABLE {tabla} ADD COLUMN {columna} TEXT NOT NULL DEFAULT ''")
+    # Producto «Armazón propio» (costo y precio 0, sin control de stock)
+    conn.execute(
+        "INSERT OR IGNORE INTO productos (codigo, categoria, descripcion, precio_coste, precio_venta,"
+        " iva, controla_stock) VALUES ('ARMAZON-PROPIO', 'Armazón', 'Armazón propio', 0, 0, 22, 0)"
+    )
     conn.commit()
     conn.close()
 
