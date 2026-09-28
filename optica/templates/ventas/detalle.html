@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros.html" import estado as etiqueta_estado, tabla_graduacion %}
+{% from "macros.html" import estado as etiqueta_estado, tabla_graduacion, selector_ejecucion %}
 {% block titulo %}Venta {{ venta.numero }}{% endblock %}
 {% block contenido %}
 {% set pendiente = venta.total - venta.pagado %}
@@ -99,6 +99,8 @@
         <label for="estado">Estado</label>
         <select id="estado" name="estado">{% for e in estados %}<option {{ 'selected' if e == venta.estado }}>{{ e }}</option>{% endfor %}</select>
       </div>
+      {% set lugar = 'taller' if venta.ejecucion == taller_propio else ('laboratorio' if venta.ejecucion in laboratorios else '') %}
+      {{ selector_ejecucion(lugar, venta.ejecucion, laboratorios) }}
       <div>
         <label for="fecha_entrega_prevista">Entrega prevista</label>
         <input type="date" id="fecha_entrega_prevista" name="fecha_entrega_prevista" value="{{ venta.fecha_entrega_prevista }}">

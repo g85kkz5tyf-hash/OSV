@@ -33,10 +33,15 @@ def init_db(path):
     conn.execute("UPDATE productos SET iva = 22 WHERE iva = 21")
     # «Montura» pasó a llamarse «Armazón», con sus medidas
     conn.execute("UPDATE productos SET categoria = 'Armazón' WHERE categoria = 'Montura'")
-    columnas = {fila[1] for fila in conn.execute("PRAGMA table_info(productos)")}
-    for columna in ("calibre", "puente", "diagonal", "altura"):
-        if columna not in columnas:
-            conn.execute(f"ALTER TABLE productos ADD COLUMN {columna} TEXT NOT NULL DEFAULT ''")
+    nuevas_columnas = {
+        "productos": ["calibre", "puente", "diagonal", "altura"],
+        "ventas": ["ejecucion"],  # taller propio o laboratorio
+    }
+    for tabla, nuevas in nuevas_columnas.items():
+        columnas = {fila[1] for fila in conn.execute(f"PRAGMA table_info({tabla})")}
+        for columna in nuevas:
+            if columna not in columnas:
+                conn.execute(f"ALTER TABLE {tabla} ADD COLUMN {columna} TEXT NOT NULL DEFAULT ''")
     conn.commit()
     conn.close()
 

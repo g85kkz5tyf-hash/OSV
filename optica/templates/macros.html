@@ -24,3 +24,35 @@
   </tbody>
 </table>
 {%- endmacro %}
+
+{% macro selector_ejecucion(lugar, laboratorio, laboratorios) -%}
+<div>
+  <label for="lugar">¿Dónde se ejecuta?</label>
+  <select id="lugar" name="lugar">
+    <option value="">— No aplica —</option>
+    <option value="taller" {{ 'selected' if lugar == 'taller' }}>Taller propio</option>
+    <option value="laboratorio" {{ 'selected' if lugar == 'laboratorio' }}>Laboratorio</option>
+  </select>
+</div>
+<div id="bloque-laboratorio" {% if lugar != 'laboratorio' %}hidden{% endif %}>
+  <label for="laboratorio">Laboratorio</label>
+  <select id="laboratorio" name="laboratorio" {{ 'required' if lugar == 'laboratorio' }}>
+    <option value="">— Elige el laboratorio —</option>
+    {% for l in laboratorios %}<option {{ 'selected' if laboratorio == l }}>{{ l }}</option>{% endfor %}
+  </select>
+</div>
+<script>
+  // El menú de laboratorios solo aparece si el trabajo va a laboratorio
+  (() => {
+    const lugar = document.getElementById("lugar");
+    const bloque = document.getElementById("bloque-laboratorio");
+    const laboratorio = document.getElementById("laboratorio");
+    lugar.addEventListener("change", () => {
+      const esLaboratorio = lugar.value === "laboratorio";
+      bloque.hidden = !esLaboratorio;
+      laboratorio.required = esLaboratorio;
+      if (!esLaboratorio) laboratorio.value = "";
+    });
+  })();
+</script>
+{%- endmacro %}

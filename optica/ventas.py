@@ -2,7 +2,7 @@ from datetime import date
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
-from .constantes import CAMPOS_OJO, CATEGORIA_ARMAZON, MEDIDAS_ARMAZON, ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO, TIPOS_IVA
+from .constantes import COLORES_EJECUCION, LABORATORIOS, TALLER_PROPIO, CAMPOS_OJO, CATEGORIA_ARMAZON, MEDIDAS_ARMAZON, ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO, TIPOS_IVA
 from .db import get_config, get_db
 from .productos import nombre_producto, registrar_movimiento
 from .utils import desglose_iva, importe_linea, parse_entero, parse_importe
@@ -19,6 +19,23 @@ SQL_VENTAS = """
 
 class ErrorVenta(Exception):
     pass
+
+
+def leer_ejecucion(form):
+    """Dónde se hace el trabajo: «Taller propio», el laboratorio elegido o '' si no aplica."""
+    lugar = form.get("lugar", "")
+    if lugar == "taller":
+        return TALLER_PROPIO
+    if lugar == "laboratorio":
+        laboratorio = form.get("laboratorio", "")
+        if laboratorio not in LABORATORIOS:
+            raise ErrorVenta("Elige en qué laboratorio se arma el trabajo.")
+        return laboratorio
+    return ""
+
+
+def contexto_ejecucion():
+    return {"laboratorios": LABORATORIOS, "taller_propio": TALLER_PROPIO, "colores": COLORES_EJECUCION}
 
 
 def obtener_venta(venta_id):
@@ -132,15 +149,16 @@ def leer_lineas_formulario(db):
     return lineas
 
 
-def crear_venta(db, cliente_id, receta_id, lineas, estado, entrega_prevista, notas, pago, metodo):
+def crear_venta(db, cliente_id, receta_id, lineas, estado, entrega_prevista, notas, pago, metodo,
+                ejecucion=""):
     total = sum(l["importe"] for l in lineas)
     if pago > total:
         raise ErrorVenta("El importe cobrado no puede superar el total de la venta.")
     numero = siguiente_numero(db)
     cur = db.execute(
-        "INSERT INTO ventas (numero, cliente_id, receta_id, total, estado, fecha_entrega_prevista, notas)"
-        " VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (numero, cliente_id, receta_id, total, estado, entrega_prevista, notas),
+        "INSERT INTO ventas (numero, cliente_id, receta_id, total, estado, fecha_entrega_prevista, notas,"
+        " ejecucion) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (numero, cliente_id, receta_id, total, estado, entrega_prevista, notas, ejecucion),
     )
     venta_id = cur.lastrowid
     for l in lineas:
@@ -186,10 +204,12 @@ def nueva():
                 raise ErrorVenta(str(e))
             if pago < 0:
                 raise ErrorVenta("El importe cobrado no puede ser negativo.")
+            ejecucion = leer_ejecucion(f)
             lineas = leer_lineas_formulario(db)
             venta_id = crear_venta(
                 db, cliente_id, receta_id, lineas, estado,
                 f.get("fecha_entrega_prevista", "").strip(), f.get("notas", "").strip(), pago, metodo,
+                ejecucion,
             )
         except ErrorVenta as e:
             db.rollback()
@@ -229,7 +249,7 @@ def contexto_nueva(form):
     return {
         "cliente": cliente, "recetas": recetas, "form": form or {}, "lineas": lineas,
         "estados": [e for e in ESTADOS_VENTA if e != "Anulada"], "metodos": METODOS_PAGO,
-        "tipos_iva": TIPOS_IVA,
+        "tipos_iva": TIPOS_IVA, **contexto_ejecucion(),
     }
 
 
@@ -247,7 +267,7 @@ def detalle(venta_id):
     return render_template(
         "ventas/detalle.html", venta=venta, lineas=lineas, pagos=pagos, cliente=cliente,
         receta=receta, estados=[e for e in ESTADOS_VENTA if e != "Anulada"], metodos=METODOS_PAGO,
-        desglose=desglose_iva(lineas), campos_ojo=CAMPOS_OJO,
+        desglose=desglose_iva(lineas), campos_ojo=CAMPOS_OJO, **contexto_ejecucion(),
     )
 
 
@@ -286,6 +306,7 @@ def orden(venta_id):
         "ventas/orden.html", venta=venta, lineas=lineas, cliente=cliente, receta=receta,
         campos_ojo=CAMPOS_OJO, config=get_config(db),
         medidas=MEDIDAS_ARMAZON, armazon=CATEGORIA_ARMAZON,
+        color_ejecucion=COLORES_EJECUCION.get(venta["ejecucion"], ""),
     )
 
 
@@ -319,11 +340,16 @@ def estado(venta_id):
     nuevo = request.form.get("estado")
     if venta["estado"] == "Anulada" or nuevo not in ESTADOS_VENTA or nuevo == "Anulada":
         abort(400)
+    try:
+        ejecucion = leer_ejecucion(request.form)
+    except ErrorVenta as e:
+        flash(str(e), "error")
+        return redirect(url_for("ventas.detalle", venta_id=venta_id))
     db = get_db()
     db.execute(
-        "UPDATE ventas SET estado = ?, fecha_entrega_prevista = ?, notas = ? WHERE id = ?",
+        "UPDATE ventas SET estado = ?, fecha_entrega_prevista = ?, notas = ?, ejecucion = ? WHERE id = ?",
         (nuevo, request.form.get("fecha_entrega_prevista", "").strip(),
-         request.form.get("notas", "").strip(), venta_id),
+         request.form.get("notas", "").strip(), ejecucion, venta_id),
     )
     db.commit()
     flash("Venta actualizada.", "ok")

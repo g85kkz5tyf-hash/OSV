@@ -10,6 +10,10 @@
     .cab { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 16px; }
     .cab .tienda strong { font-size: 20px; }
     .cab .titulo { text-align: right; }
+    .cab .derecha { display: flex; align-items: flex-start; gap: 5mm; }
+    /* Recuadro de 2 x 2 cm con el color del taller o laboratorio; se imprime con color */
+    .color-ejecucion { width: 20mm; height: 20mm; flex: none; border: 1px solid #000;
+                       -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .cab .titulo h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: .03em; }
     h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; margin: 18px 0 6px; color: #333; }
     .datos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; }
@@ -55,9 +59,14 @@
       {% if config.direccion %}{{ config.direccion }}<br>{% endif %}
       {% if config.telefono %}Tel. {{ config.telefono }}{% endif %}
     </div>
-    <div class="titulo">
-      <h1>ORDEN DE TRABAJO</h1>
-      Nº {{ venta.numero }}
+    <div class="derecha">
+      <div class="titulo">
+        <h1>ORDEN DE TRABAJO</h1>
+        Nº {{ venta.numero }}
+      </div>
+      {% if color_ejecucion %}
+      <div class="color-ejecucion" style="background: {{ color_ejecucion }}" title="{{ venta.ejecucion }}"></div>
+      {% endif %}
     </div>
   </div>
 
@@ -66,6 +75,9 @@
     <div class="dato"><span>Teléfono:</span>{{ cliente.telefono if cliente else '' }}</div>
     <div class="dato"><span>Fecha de venta:</span>{{ venta.fecha[:10]|fecha }}</div>
     <div class="dato"><span>Fecha de entrega:</span>{{ venta.fecha_entrega_prevista|fecha }}</div>
+    {% if venta.ejecucion %}
+    <div class="dato"><span>Se ejecuta en:</span>{{ venta.ejecucion if venta.ejecucion == 'Taller propio' else 'Laboratorio ' ~ venta.ejecucion }}</div>
+    {% endif %}
   </div>
 
   <h2>Productos</h2>

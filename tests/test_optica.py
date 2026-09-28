@@ -369,3 +369,39 @@ def test_migracion_montura_a_armazon(tmp_path):
     assert tuple(conn.execute("SELECT categoria, calibre FROM productos").fetchone()) == ("Armazón", "")
     conn.close()
     assert app.test_client().get("/productos/1/editar").status_code == 200
+
+
+@pytest.mark.parametrize("lugar,laboratorio,guardado,color", [
+    ("taller", "", "Taller propio", "#e10600"),
+    ("laboratorio", "Vidaltec", "Vidaltec", "#1e9e3a"),
+    ("laboratorio", "Camponac", "Camponac", "#38bdf8"),
+    ("laboratorio", "Rodenstock", "Rodenstock", "#1d4ed8"),
+    ("laboratorio", "Jiki", "Jiki", "#7e22ce"),
+])
+def test_donde_se_ejecuta_y_color_en_la_orden(client, db, lugar, laboratorio, guardado, color):
+    r = vender(client, [{"descripcion": "Lentes", "precio": "3000"}], lugar=lugar, laboratorio=laboratorio)
+    assert r.status_code == 302
+    assert db.execute("SELECT ejecucion FROM ventas").fetchone()[0] == guardado
+    html = client.get("/ventas/1/orden").get_data(as_text=True)
+    assert f'class="color-ejecucion" style="background: {color}"' in html
+
+
+def test_laboratorio_obligatorio_si_va_a_laboratorio(client, db):
+    r = vender(client, [{"descripcion": "Lentes", "precio": "3000"}], lugar="laboratorio", laboratorio="")
+    assert r.status_code == 200 and "Elige en qué laboratorio" in r.get_data(as_text=True)
+    assert db.execute("SELECT COUNT(*) FROM ventas").fetchone()[0] == 0
+    r = vender(client, [{"descripcion": "Lentes", "precio": "3000"}], lugar="laboratorio", laboratorio="Otro")
+    assert r.status_code == 200
+
+
+def test_sin_lugar_no_hay_recuadro(client):
+    vender(client, [{"descripcion": "Líquido", "precio": "300"}])
+    assert 'class="color-ejecucion"' not in client.get("/ventas/1/orden").get_data(as_text=True)
+
+
+def test_cambiar_laboratorio_desde_la_ficha(client, db):
+    vender(client, [{"descripcion": "Lentes", "precio": "3000"}], lugar="taller", estado="En taller")
+    client.post("/ventas/1/estado", data={"estado": "En taller", "lugar": "laboratorio", "laboratorio": "Jiki"})
+    assert db.execute("SELECT ejecucion FROM ventas").fetchone()[0] == "Jiki"
+    ficha = client.get("/ventas/1").get_data(as_text=True)
+    assert '<option selected>Jiki</option>' in ficha

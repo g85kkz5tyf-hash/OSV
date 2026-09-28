@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS ventas (
     receta_id INTEGER REFERENCES recetas(id),
     total INTEGER NOT NULL DEFAULT 0,
     estado TEXT NOT NULL DEFAULT 'Entregado', -- Pendiente, En taller, Listo para recoger, Entregado, Anulada
+    ejecucion TEXT NOT NULL DEFAULT '', -- «Taller propio» o el nombre del laboratorio
     fecha_entrega_prevista TEXT NOT NULL DEFAULT '',
     notas TEXT NOT NULL DEFAULT ''
 );

@@ -45,3 +45,14 @@ MEDIDAS_ARMAZON = [
     ("diagonal", "Diagonal", "D"),
     ("altura", "Altura", "A"),
 ]
+
+# Dónde se hace el trabajo y color del recuadro de la orden de trabajo
+TALLER_PROPIO = "Taller propio"
+LABORATORIOS = ["Vidaltec", "Camponac", "Rodenstock", "Jiki"]
+COLORES_EJECUCION = {
+    TALLER_PROPIO: "#e10600",  # rojo
+    "Vidaltec": "#1e9e3a",     # verde
+    "Camponac": "#38bdf8",     # celeste
+    "Rodenstock": "#1d4ed8",   # azul
+    "Jiki": "#7e22ce",         # púrpura
+}

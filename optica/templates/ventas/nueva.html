@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros.html" import selector_ejecucion %}
 {% block titulo %}Nueva venta{% endblock %}
 {% block contenido %}
 <div class="cabecera"><h1>Nueva venta</h1></div>
@@ -53,6 +54,7 @@
           {% for e in estados %}<option {{ 'selected' if (form.estado or 'Entregado') == e }}>{{ e }}</option>{% endfor %}
         </select>
       </div>
+      {{ selector_ejecucion(form.lugar, form.laboratorio, laboratorios) }}
       <div>
         <label for="fecha_entrega_prevista">Entrega prevista</label>
         <input type="date" id="fecha_entrega_prevista" name="fecha_entrega_prevista" value="{{ form.fecha_entrega_prevista or '' }}">
