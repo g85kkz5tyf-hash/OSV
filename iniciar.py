@@ -1,10 +1,13 @@
 """Arranca el programa de gestión de la óptica y lo abre en el navegador."""
 import logging
+import secrets
 import socket
 import threading
 import time
+import urllib.parse
 import urllib.request
 import webbrowser
+from pathlib import Path
 
 import flask.cli
 
@@ -13,6 +16,8 @@ from optica.main import MARCA_ESTADO
 
 # Puertos poco habituales: el 5000 lo usa AirPlay en los Mac y daba página en blanco.
 PUERTOS = range(8765, 8776)
+# Clave para que un arranque nuevo pueda cerrar la copia que ya estaba abierta
+ARCHIVO_CLAVE = Path(__file__).resolve().parent / "datos" / ".instancia"
 
 app = create_app()
 
@@ -35,6 +40,21 @@ def libre(puerto):
             return False
 
 
+def cerrar_anterior(puerto):
+    """Pide a la copia ya abierta que se cierre, para usar la versión recién instalada."""
+    try:
+        clave = ARCHIVO_CLAVE.read_text(encoding="utf-8").strip()
+        datos = urllib.parse.urlencode({"clave": clave}).encode()
+        urllib.request.urlopen(f"http://127.0.0.1:{puerto}/cerrar", data=datos, timeout=3).read()
+    except Exception:
+        return False
+    for _ in range(20):
+        if libre(puerto):
+            return True
+        time.sleep(0.25)
+    return False
+
+
 def abrir_cuando_este_listo(url, puerto):
     """Abre el navegador solo cuando el programa ya responde, para no ver una página vacía."""
     for _ in range(120):
@@ -49,8 +69,12 @@ def main():
     for puerto in PUERTOS:
         url = f"http://127.0.0.1:{puerto}"
         if es_nuestro(puerto):
-            print("El programa ya está abierto. Abriendo el navegador...")
-            print("Si no se abre, escribe en el navegador:", url)
+            if cerrar_anterior(puerto):
+                break
+            # Una versión antigua que no sabe cerrarse sola
+            print("El programa ya estaba abierto en otra ventana negra.")
+            print("Para usar la versión actualizada, cierra TODAS las ventanas negras")
+            print("y vuelve a abrir el programa. Mientras tanto se abre el que ya estaba.")
             webbrowser.open(url)
             return
         if libre(puerto):
@@ -59,8 +83,18 @@ def main():
         print("No se ha encontrado un puerto libre. Reinicia el ordenador y vuelve a intentarlo.")
         return
 
+    clave = secrets.token_hex(16)
+    app.config["CLAVE_CIERRE"] = clave
+    try:
+        ARCHIVO_CLAVE.parent.mkdir(exist_ok=True)
+        ARCHIVO_CLAVE.write_text(clave, encoding="utf-8")
+    except OSError:
+        pass
+
     print()
     print("  Gestión Óptica en marcha.")
+    if app.config["VERSION"]:
+        print("  Versión del", app.config["VERSION"])
     print("  Si el navegador no se abre solo, escribe esta dirección:", url)
     print("  Deja esta ventana abierta mientras uses el programa. Ciérrala para salir.")
     print()

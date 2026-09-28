@@ -1,9 +1,11 @@
+import os
 import sqlite3
 import tempfile
+import threading
 from datetime import date, timedelta
 from pathlib import Path
 
-from flask import (Blueprint, current_app, flash, redirect, render_template, request,
+from flask import (Blueprint, abort, current_app, flash, redirect, render_template, request,
                    send_file, url_for)
 
 from .constantes import ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO
@@ -20,6 +22,16 @@ CAMPOS_CONFIG = ["nombre", "nif", "direccion", "telefono", "email", "pie_ticket"
 def estado():
     """Permite al lanzador comprobar que en el puerto está este programa y no otro."""
     return MARCA_ESTADO
+
+
+@bp.route("/cerrar", methods=["POST"])
+def cerrar():
+    """El lanzador cierra la copia que ya estaba abierta para arrancar la versión nueva."""
+    clave = current_app.config.get("CLAVE_CIERRE")
+    if not clave or request.form.get("clave") != clave:
+        abort(403)
+    threading.Timer(0.3, lambda: os._exit(0)).start()
+    return "cerrando"
 
 
 @bp.route("/")

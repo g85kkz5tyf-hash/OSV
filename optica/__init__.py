@@ -19,6 +19,12 @@ def create_app(config=None):
     if config:
         app.config.update(config)
 
+    try:
+        sha, fecha = (RAIZ / "version.txt").read_text(encoding="utf-8").split()[:2]
+        app.config["VERSION"] = f"{formato_fecha(fecha)} ({sha[:7]})"
+    except (OSError, ValueError):
+        app.config["VERSION"] = ""
+
     database.init_db(app.config["DATABASE"])
     app.teardown_appcontext(database.close_db)
 
@@ -29,7 +35,7 @@ def create_app(config=None):
     @app.context_processor
     def datos_tienda():
         config = database.get_config(database.get_db())
-        return {"tienda": config}
+        return {"tienda": config, "version": app.config["VERSION"]}
 
     from .clientes import bp as clientes_bp
     from .main import bp as main_bp

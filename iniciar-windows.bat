@@ -28,7 +28,8 @@ echo.
 .venv\Scripts\python actualizar.py
 echo.
 .venv\Scripts\python iniciar.py
-pause
+rem Si el programa se cierra solo para actualizarse, la ventana se cierra sin esperar
+if errorlevel 1 pause
 exit /b
 
 :sin_python

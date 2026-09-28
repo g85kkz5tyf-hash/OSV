@@ -7,9 +7,11 @@ Si no hay internet o algo falla, se sigue usando la versión actual.
 import io
 import json
 import shutil
+import ssl
 import subprocess
 import sys
 import tempfile
+import urllib.error
 import urllib.request
 import zipfile
 from datetime import datetime
@@ -27,10 +29,33 @@ ARCHIVOS = ["iniciar.py", "actualizar.py", "requirements.txt", "LEEME-INSTALACIO
 COPIAS_A_CONSERVAR = 10
 
 
+def certificados():
+    """Certificados de seguridad para HTTPS.
+
+    El Python que se instala en los Mac no trae certificados y no puede conectarse a
+    GitHub; en ese caso se usan los que incluye pip (siempre presente en el programa).
+    """
+    try:
+        from pip._vendor import certifi
+    except ImportError:
+        try:
+            import certifi
+        except ImportError:
+            return None
+    return ssl.create_default_context(cafile=certifi.where())
+
+
 def descargar(url, timeout=10):
     peticion = urllib.request.Request(url, headers={"User-Agent": "gestion-optica"})
-    with urllib.request.urlopen(peticion, timeout=timeout) as r:
-        return r.read()
+    try:
+        with urllib.request.urlopen(peticion, timeout=timeout) as r:
+            return r.read()
+    except urllib.error.URLError as e:
+        contexto = certificados()
+        if not isinstance(e.reason, ssl.SSLError) or contexto is None:
+            raise
+        with urllib.request.urlopen(peticion, timeout=timeout, context=contexto) as r:
+            return r.read()
 
 
 def version_local():
@@ -104,8 +129,9 @@ def main():
     print("Buscando actualizaciones...")
     try:
         sha, fecha = version_remota()
-    except Exception:
-        print("No se ha podido comprobar si hay actualizaciones (¿sin internet?). Se usa la versión actual.")
+    except Exception as e:
+        print("No se ha podido comprobar si hay actualizaciones. Se usa la versión actual.")
+        print(f"  (Motivo: {e})")
         return
     if sha == version_local():
         print("El programa está al día.")

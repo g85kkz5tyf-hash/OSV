@@ -312,3 +312,20 @@ def test_orden_de_venta(client, db):
 def test_orden_de_venta_sin_cliente_ni_receta(client):
     vender(client, [{"descripcion": "Líquido", "precio": "300"}])
     assert client.get("/ventas/1/orden").status_code == 200
+
+
+def test_cerrar_requiere_clave(app, client, monkeypatch):
+    import optica.main
+    cierres = []
+    monkeypatch.setattr(optica.main.threading, "Timer", lambda *a: type("T", (), {"start": lambda s: cierres.append(1)})())
+    assert client.post("/cerrar", data={"clave": "x"}).status_code == 403  # sin clave configurada
+    app.config["CLAVE_CIERRE"] = "secreta"
+    assert client.post("/cerrar", data={"clave": "otra"}).status_code == 403
+    assert client.get("/cerrar").status_code == 405
+    assert not cierres
+    assert client.post("/cerrar", data={"clave": "secreta"}).status_code == 200
+    assert cierres == [1]
+
+
+def test_version_en_el_pie(client):
+    assert "Versión" in client.get("/").get_data(as_text=True)

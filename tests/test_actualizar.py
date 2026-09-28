@@ -92,3 +92,35 @@ def test_descarga_incorrecta_no_rompe_nada(instalacion, monkeypatch, capsys):
     assert "No se ha podido actualizar" in capsys.readouterr().out
     assert (instalacion / "optica" / "viejo.py").exists()
     assert not (instalacion / "version.txt").exists()
+
+
+def test_reintenta_con_certificados_de_pip(monkeypatch):
+    """En los Mac, Python no trae certificados: se usan los que incluye pip."""
+    import ssl
+    import urllib.error
+    llamadas = []
+
+    class Respuesta(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            pass
+
+    def urlopen(peticion, timeout=10, context=None):
+        llamadas.append(context)
+        if context is None:
+            raise urllib.error.URLError(ssl.SSLCertVerificationError("certificate verify failed"))
+        return Respuesta(b"ok")
+
+    monkeypatch.setattr(actualizar.urllib.request, "urlopen", urlopen)
+    assert actualizar.descargar("https://api.github.com/x") == b"ok"
+    assert llamadas[0] is None and isinstance(llamadas[1], ssl.SSLContext)
+
+
+def test_sin_internet_muestra_el_motivo(instalacion, monkeypatch, capsys):
+    def sin_red(url, timeout=10):
+        raise OSError("sin conexión")
+    monkeypatch.setattr(actualizar, "descargar", sin_red)
+    actualizar.main()
+    assert "Motivo: sin conexión" in capsys.readouterr().out

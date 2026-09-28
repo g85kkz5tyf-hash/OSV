@@ -31,6 +31,7 @@
     {% endwith %}
     {% block contenido %}{% endblock %}
   </main>
+  <footer class="pie">Versión {{ ('del ' ~ version) if version else 'inicial' }}</footer>
   {% block scripts %}{% endblock %}
 </body>
 </html>
