@@ -305,6 +305,23 @@ def estado(venta_id):
     return redirect(url_for("ventas.detalle", venta_id=venta_id))
 
 
+@bp.route("/<int:venta_id>/cambiar-estado", methods=["POST"])
+def cambiar_estado(venta_id):
+    """Cambio rápido de estado desde la lista de encargos (no toca notas ni fechas)."""
+    venta = obtener_venta(venta_id)
+    nuevo = request.form.get("estado")
+    if venta["estado"] == "Anulada" or nuevo not in ESTADOS_VENTA or nuevo == "Anulada":
+        abort(400)
+    db = get_db()
+    db.execute("UPDATE ventas SET estado = ? WHERE id = ?", (nuevo, venta_id))
+    db.commit()
+    flash(f"Venta {venta['numero']}: estado cambiado a «{nuevo}».", "ok")
+    volver = request.form.get("volver", "")
+    if not volver.startswith("/") or volver.startswith("//"):
+        volver = url_for("main.inicio")
+    return redirect(volver)
+
+
 @bp.route("/<int:venta_id>/anular", methods=["POST"])
 def anular(venta_id):
     venta = obtener_venta(venta_id)

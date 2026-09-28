@@ -183,3 +183,17 @@ table.lineas td { padding: 6px; }
   main { padding: 0; max-width: none; }
   .panel { border: none; padding: 0; }
 }
+
+/* Desplegable de estado en la lista de encargos */
+select.selector-estado {
+  width: auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+select.selector-estado:hover { border-color: var(--borde); }
+select.selector-estado option { background: #fff; color: var(--texto); font-weight: normal; }
+form.cambio-estado { margin: 0; }

@@ -6,7 +6,7 @@ from pathlib import Path
 from flask import (Blueprint, current_app, flash, redirect, render_template, request,
                    send_file, url_for)
 
-from .constantes import ESTADOS_ABIERTOS, METODOS_PAGO
+from .constantes import ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO
 from .db import get_config, get_db, set_config
 
 bp = Blueprint("main", __name__)
@@ -77,6 +77,7 @@ def inicio():
         "inicio.html", ventas_hoy=ventas_hoy, ventas_mes=ventas_mes, cobrado_hoy=cobrado_hoy,
         encargos=encargos, pendiente_cobro=pendiente_cobro, stock_bajo=stock_bajo,
         revisiones=revisiones, hoy=hoy.isoformat(),
+        estados=[e for e in ESTADOS_VENTA if e != "Anulada"],
     )
 
 

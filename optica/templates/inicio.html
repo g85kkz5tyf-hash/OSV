@@ -44,7 +44,16 @@
         <td>{% if v.cliente_id %}<a href="{{ url_for('clientes.ficha', cliente_id=v.cliente_id) }}">{{ v.cliente_nombre }}</a>{% else %}<span class="suave">Sin cliente</span>{% endif %}</td>
         <td>{{ v.cliente_telefono or '' }}</td>
         <td class="{{ 'alerta' if v.fecha_entrega_prevista and v.fecha_entrega_prevista < hoy }}">{{ v.fecha_entrega_prevista|fecha }}</td>
-        <td>{{ estado(v.estado) }}</td>
+        <td>
+          <form method="post" action="{{ url_for('ventas.cambiar_estado', venta_id=v.id) }}" class="cambio-estado">
+            <input type="hidden" name="volver" value="{{ request.path }}">
+            <select name="estado" aria-label="Estado de la venta {{ v.numero }}"
+                    class="selector-estado estado-{{ v.estado|replace(' ', '-') }}"
+                    data-actual="{{ v.estado }}" data-pendiente="{{ (v.total - v.pagado)|euros if v.total > v.pagado else '' }}">
+              {% for e in estados %}<option {{ 'selected' if e == v.estado }}>{{ e }}</option>{% endfor %}
+            </select>
+          </form>
+        </td>
         <td class="num">{{ (v.total - v.pagado)|euros }}</td>
       </tr>
     {% endfor %}
@@ -94,4 +103,21 @@
     {% else %}<p class="vacio">No hay revisiones previstas en los próximos 30 días.</p>{% endif %}
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Cambiar el estado de un encargo directamente desde el desplegable
+document.querySelectorAll(".cambio-estado select").forEach(select => {
+  select.addEventListener("change", () => {
+    const pendiente = select.dataset.pendiente;
+    if (select.value === "Entregado" && pendiente &&
+        !confirm(`Queda pendiente de cobro ${pendiente}. ¿Marcar como entregado igualmente?`)) {
+      select.value = select.dataset.actual;
+      return;
+    }
+    select.form.submit();
+  });
+});
+</script>
 {% endblock %}

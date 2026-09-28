@@ -254,3 +254,28 @@ def test_configuracion_y_copia(client):
     assert "Óptica Sol" in client.get("/").get_data(as_text=True)
     r = client.get("/copia-seguridad")
     assert r.status_code == 200 and r.data[:15] == b"SQLite format 3"
+
+
+def test_cambio_rapido_de_estado_desde_inicio(client, db):
+    vender(client, [{"descripcion": "Gafas graduadas", "precio": "200"}],
+           estado="En taller", notas="Montaje al aire", fecha_entrega_prevista="2026-10-10")
+    inicio = client.get("/").get_data(as_text=True)
+    assert 'class="cambio-estado"' in inicio
+
+    r = client.post("/ventas/1/cambiar-estado", data={"estado": "Listo para recoger", "volver": "/"})
+    assert r.status_code == 302 and r.headers["Location"].endswith("/")
+    venta = db.execute("SELECT estado, notas, fecha_entrega_prevista FROM ventas").fetchone()
+    # cambia el estado sin perder las notas ni la fecha de entrega
+    assert tuple(venta) == ("Listo para recoger", "Montaje al aire", "2026-10-10")
+
+    client.post("/ventas/1/cambiar-estado", data={"estado": "Entregado", "volver": "/"})
+    assert "Gafas graduadas" not in client.get("/").get_data(as_text=True)  # sale de encargos en curso
+
+
+def test_cambio_rapido_de_estado_validaciones(client, db):
+    vender(client, [{"descripcion": "Gafas", "precio": "50"}], estado="Pendiente")
+    assert client.post("/ventas/1/cambiar-estado", data={"estado": "Anulada"}).status_code == 400
+    assert client.post("/ventas/1/cambiar-estado", data={"estado": "Inventado"}).status_code == 400
+    # no redirige a webs externas
+    r = client.post("/ventas/1/cambiar-estado", data={"estado": "En taller", "volver": "//malo.com"})
+    assert r.headers["Location"] == "/"
