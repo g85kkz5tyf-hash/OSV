@@ -13,7 +13,7 @@
   <div class="tarjeta">
     <div class="etiqueta">Cobrado hoy</div>
     <div class="valor">{{ cobrado_hoy|moneda }}</div>
-    <div class="detalle"><a href="{{ url_for('main.caja') }}">Ver caja del día</a></div>
+    <div class="detalle"><a href="{{ url_for('main.caja') }}">Ver caja del día</a> · <a href="{{ url_for('main.cierre') }}">Cerrar el día</a></div>
   </div>
   <div class="tarjeta">
     <div class="etiqueta">Ventas del mes</div>

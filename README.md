@@ -36,7 +36,7 @@ todos los datos quedan guardados en un único archivo (`datos/optica.db`).
 **Además**
 - Pantalla de inicio con ventas del día y del mes, encargos en curso, stock bajo y tareas
   pendientes del taller propio.
-- Caja del día por forma de pago.
+- Caja del día por forma de pago y cierre del día (resumen, efectivo contado y diferencia).
 - Informes anuales por mes, categoría y productos más vendidos.
 - Copia de seguridad descargable con un clic.
 

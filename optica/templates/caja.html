@@ -8,6 +8,11 @@
       <div><label for="dia">Día</label><input id="dia" type="date" name="dia" value="{{ dia }}" onchange="this.form.submit()"></div>
     </form>
     <button class="secundario" onclick="window.print()">Imprimir</button>
+    {% if cierre %}
+      <a class="boton secundario" href="{{ url_for('main.cierre', dia=dia) }}">✔ Día cerrado · ver cierre</a>
+    {% else %}
+      <a class="boton" href="{{ url_for('main.cierre', dia=dia) }}">Cerrar el día</a>
+    {% endif %}
   </div>
 </div>
 
@@ -39,4 +44,26 @@
   </div>
   {% else %}<p class="vacio">No hay cobros este día.</p>{% endif %}
 </div>
+
+{% if cierres %}
+<div class="panel no-imprimir">
+  <h2>Últimos cierres</h2>
+  <div class="tabla-scroll">
+  <table>
+    <thead><tr><th>Día</th><th>Cerrado</th><th class="num">Ventas</th><th class="num">Cobrado</th><th class="num">Efectivo contado</th></tr></thead>
+    <tbody>
+    {% for c in cierres %}
+      <tr>
+        <td><a href="{{ url_for('main.cierre', dia=c.dia) }}">{{ c.dia|fecha }}</a></td>
+        <td>{{ c.cerrado|fecha }}</td>
+        <td class="num">{{ c.total_ventas|moneda }} <small class="suave">({{ c.num_ventas }})</small></td>
+        <td class="num">{{ c.total_cobrado|moneda }}</td>
+        <td class="num">{{ c.efectivo_contado|moneda if c.efectivo_contado is not none else '—' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

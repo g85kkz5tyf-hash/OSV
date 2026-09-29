@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block titulo %}Cierre del día{% endblock %}
+{% block contenido %}
+<div class="cabecera">
+  <h1>Cierre del día {{ dia|fecha }}</h1>
+  <div class="acciones no-imprimir">
+    <a class="boton secundario" href="{{ url_for('main.caja', dia=dia) }}">Ver la caja del día</a>
+    <button class="secundario" onclick="window.print()">Imprimir</button>
+  </div>
+</div>
+
+{% if cierre %}
+  <div class="mensaje {{ 'error' if desactualizado else 'ok' }}">
+    {% if desactualizado %}
+      Este día se cerró el {{ cierre.cerrado|fecha }}, pero después hubo más ventas o cobros.
+      <strong>Vuelve a cerrar el día</strong> para que el cierre quede actualizado.
+    {% else %}
+      ✔ Día cerrado el {{ cierre.cerrado|fecha }}.
+    {% endif %}
+  </div>
+{% endif %}
+
+<div class="tarjetas">
+  <div class="tarjeta">
+    <div class="etiqueta">Ventas del día</div>
+    <div class="valor">{{ resumen.total_ventas|moneda }}</div>
+    <div class="detalle">{{ resumen.num_ventas }} venta{{ 's' if resumen.num_ventas != 1 }}{% if resumen.anuladas %} · {{ resumen.anuladas }} anulada{{ 's' if resumen.anuladas != 1 }}{% endif %}</div>
+  </div>
+  <div class="tarjeta" style="border-color: var(--primario)">
+    <div class="etiqueta">Total cobrado</div>
+    <div class="valor">{{ resumen.total_cobrado|moneda }}</div>
+    {% if resumen.saldos_anteriores %}<div class="detalle">incluye {{ resumen.saldos_anteriores|moneda }} de saldos de ventas anteriores</div>{% endif %}
+  </div>
+  <div class="tarjeta">
+    <div class="etiqueta">Quedó pendiente de cobro</div>
+    <div class="valor {{ 'aviso' if resumen.pendiente > 0 }}">{{ resumen.pendiente|moneda }}</div>
+    <div class="detalle">de las ventas de este día</div>
+  </div>
+</div>
+
+<div class="rejilla">
+  <div class="panel">
+    <h2>Cobrado por medio de pago</h2>
+    <table>
+      <tbody>
+      {% for metodo, importe in resumen.por_metodo.items() %}
+        <tr><td>{{ metodo }}</td><td class="num">{{ importe|moneda }}</td></tr>
+      {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr><th>Total</th><th class="num">{{ resumen.total_cobrado|moneda }}</th></tr>
+        {% if resumen.devoluciones %}<tr><td class="suave">Devoluciones incluidas</td><td class="num alerta">-{{ resumen.devoluciones|moneda }}</td></tr>{% endif %}
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h2>Efectivo en caja</h2>
+    <dl class="datos">
+      <dt>Efectivo según el programa</dt><dd><strong>{{ resumen.efectivo|moneda }}</strong></dd>
+      {% if cierre and cierre.efectivo_contado is not none %}
+        {% set diferencia = cierre.efectivo_contado - resumen.efectivo %}
+        <dt>Efectivo contado</dt><dd>{{ cierre.efectivo_contado|moneda }}</dd>
+        <dt>Diferencia</dt>
+        <dd class="{{ 'alerta' if diferencia else '' }}"><strong>{{ diferencia|moneda }}</strong>{% if not diferencia %} ✔ cuadra{% elif diferencia > 0 %} (sobra){% else %} (falta){% endif %}</dd>
+      {% endif %}
+      {% if cierre and cierre.notas %}<dt>Notas</dt><dd style="white-space: pre-line">{{ cierre.notas }}</dd>{% endif %}
+    </dl>
+
+    <form method="post" class="no-imprimir" style="margin-top: 16px; display: grid; gap: 12px">
+      <input type="hidden" name="dia" value="{{ dia }}">
+      <div>
+        <label for="efectivo_contado">Efectivo contado en la caja ($, opcional)</label>
+        <input id="efectivo_contado" name="efectivo_contado" inputmode="decimal" placeholder="0,00"
+               value="{{ cierre.efectivo_contado|importe if cierre and cierre.efectivo_contado is not none else '' }}">
+        <p class="suave" id="diferencia" style="margin: 4px 0 0"></p>
+      </div>
+      <div>
+        <label for="notas">Notas del cierre</label>
+        <textarea id="notas" name="notas" placeholder="Retiros, faltantes, observaciones…">{{ cierre.notas if cierre else '' }}</textarea>
+      </div>
+      <div><button type="submit">{{ 'Volver a cerrar el día' if cierre else 'Cerrar el día' }}</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Diferencia entre el efectivo contado y el que indica el programa, mientras se escribe
+const ESPERADO = {{ resumen.efectivo }};
+const campo = document.getElementById("efectivo_contado"), aviso = document.getElementById("diferencia");
+function aCentimos(t) {
+  t = String(t || "").trim().replace("$", "").replace(/\s/g, "");
+  if (!t) return null;
+  if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
+  else if (/^-?\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, "");
+  const n = Number(t);
+  return isNaN(n) ? null : Math.round(n * 100);
+}
+const moneda = c => (c < 0 ? "-" : "") + "$ " + Math.floor(Math.abs(c) / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "," + String(Math.abs(c) % 100).padStart(2, "0");
+function mostrar() {
+  const contado = aCentimos(campo.value);
+  if (contado === null) { aviso.textContent = ""; return; }
+  const d = contado - ESPERADO;
+  aviso.textContent = d === 0 ? "✔ Cuadra con el programa" : `Diferencia: ${moneda(d)} (${d > 0 ? "sobra" : "falta"})`;
+  aviso.className = d === 0 ? "suave" : "alerta";
+}
+campo.addEventListener("input", mostrar);
+mostrar();
+</script>
+{% endblock %}

@@ -870,3 +870,41 @@ def test_sin_progresivas_ni_lente_oftalmica_en_pantalla(client):
     formulario = client.get(f"/clientes/{cid}/recetas/nueva").get_data(as_text=True)
     assert "Lentes multifocales" in formulario and "progresiv" not in formulario.lower()
     assert ">Cristales<" in client.get("/productos/nuevo").get_data(as_text=True)
+
+
+def test_cierre_del_dia(client, db):
+    vender(client, [{"descripcion": "Lentes", "precio": "5000"}], pago=["2000", "1000"], metodo=["Efectivo", "Tarjeta"],
+           estado="En taller")
+    vender(client, [{"descripcion": "Líquido", "precio": "300"}], pago="300", metodo="Efectivo")
+    caja = client.get("/caja").get_data(as_text=True)
+    assert "Cerrar el día" in caja
+    pagina = client.get("/cierre").get_data(as_text=True)
+    assert "$ 5.300,00" in pagina  # ventas del día
+    assert "$ 3.300,00" in pagina  # total cobrado
+    assert "$ 2.000,00" in pagina  # pendiente de cobro
+    assert "$ 2.300,00" in pagina  # efectivo según el programa
+
+    r = client.post("/cierre", data={"efectivo_contado": "2.250", "notas": "Faltan 50 de cambio"}, follow_redirects=True)
+    html = r.get_data(as_text=True)
+    assert "cerrado" in html and "-$ 50,00" in html and "(falta)" in html
+    cierre = db.execute("SELECT * FROM cierres").fetchone()
+    assert (cierre["total_ventas"], cierre["total_cobrado"], cierre["efectivo_contado"]) == (530000, 330000, 225000)
+    assert "✔ Día cerrado" in client.get("/caja").get_data(as_text=True)
+
+    # un cobro después del cierre: el cierre queda desactualizado hasta volver a cerrar
+    client.post("/ventas/1/pago", data={"importe": "2000", "metodo": "Efectivo"})
+    assert "Vuelve a cerrar el día" in client.get("/cierre").get_data(as_text=True)
+    client.post("/cierre", data={"efectivo_contado": "4.300"})
+    assert db.execute("SELECT COUNT(*) FROM cierres").fetchone()[0] == 1
+    html = client.get("/cierre").get_data(as_text=True)
+    assert "Vuelve a cerrar" not in html and "cuadra" in html
+
+
+def test_cierre_de_otro_dia_y_sin_efectivo(client, db):
+    r = client.post("/cierre", data={"dia": "2026-01-15", "efectivo_contado": ""}, follow_redirects=True)
+    assert r.status_code == 200
+    fila = db.execute("SELECT dia, efectivo_contado, total_cobrado FROM cierres").fetchone()
+    assert tuple(fila) == ("2026-01-15", None, 0)
+    assert "15/01/2026" in client.get("/caja").get_data(as_text=True)  # en «Últimos cierres»
+    r = client.post("/cierre", data={"efectivo_contado": "abc"}, follow_redirects=True)
+    assert "no válido" in r.get_data(as_text=True)

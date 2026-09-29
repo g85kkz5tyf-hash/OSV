@@ -160,3 +160,16 @@ CREATE TABLE IF NOT EXISTS venta_recetas (
     numero_trabajo TEXT NOT NULL DEFAULT '', -- nº del laboratorio para esta receta
     PRIMARY KEY (venta_id, receta_id)
 );
+
+-- Cierres del día (cierre de caja)
+CREATE TABLE IF NOT EXISTS cierres (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dia TEXT NOT NULL UNIQUE,              -- AAAA-MM-DD
+    cerrado TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    num_ventas INTEGER NOT NULL DEFAULT 0,
+    total_ventas INTEGER NOT NULL DEFAULT 0,
+    total_cobrado INTEGER NOT NULL DEFAULT 0,
+    por_metodo TEXT NOT NULL DEFAULT '{}', -- cobrado por medio de pago (JSON)
+    efectivo_contado INTEGER,              -- lo que se contó en la caja (opcional)
+    notas TEXT NOT NULL DEFAULT ''
+);

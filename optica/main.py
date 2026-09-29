@@ -1,3 +1,4 @@
+import json
 import os
 import sqlite3
 import tempfile
@@ -10,6 +11,7 @@ from flask import (Blueprint, abort, current_app, flash, redirect, render_templa
 
 from .constantes import LABORATORIOS, TALLER_PROPIO, ESTADOS_ABIERTOS, ESTADOS_VENTA, METODOS_PAGO
 from .db import get_config, get_db, set_config
+from .utils import formato_fecha, parse_importe
 from .ventas import trabajos_por_receta
 
 bp = Blueprint("main", __name__)
@@ -128,7 +130,86 @@ def caja():
         por_metodo[p["metodo"]] = por_metodo.get(p["metodo"], 0) + p["importe"]
     return render_template(
         "caja.html", dia=dia, pagos=pagos, por_metodo=por_metodo,
-        total=sum(p["importe"] for p in pagos),
+        total=sum(p["importe"] for p in pagos), hoy=date.today().isoformat(),
+        cierre=db.execute("SELECT * FROM cierres WHERE dia = ?", (dia,)).fetchone(),
+        cierres=db.execute("SELECT * FROM cierres ORDER BY dia DESC LIMIT 10").fetchall(),
+    )
+
+
+def resumen_del_dia(db, dia):
+    """Números del día para el cierre: ventas, cobros por medio de pago y pendientes."""
+    ventas = db.execute(
+        "SELECT COUNT(*) AS n, COALESCE(SUM(total), 0) AS total FROM ventas"
+        " WHERE estado != 'Anulada' AND date(fecha) = ?",
+        (dia,),
+    ).fetchone()
+    anuladas = db.execute(
+        "SELECT COUNT(*) FROM ventas WHERE estado = 'Anulada' AND date(fecha) = ?", (dia,)
+    ).fetchone()[0]
+    por_metodo = {m: 0 for m in METODOS_PAGO}
+    devoluciones = 0
+    for p in db.execute("SELECT metodo, importe FROM pagos WHERE date(fecha) = ?", (dia,)):
+        por_metodo[p["metodo"]] = por_metodo.get(p["metodo"], 0) + p["importe"]
+        if p["importe"] < 0:
+            devoluciones += -p["importe"]
+    # De lo cobrado hoy, cuánto es de ventas de días anteriores (saldos)
+    saldos = db.execute(
+        "SELECT COALESCE(SUM(p.importe), 0) FROM pagos p JOIN ventas v ON v.id = p.venta_id"
+        " WHERE date(p.fecha) = ? AND date(v.fecha) < ? AND p.importe > 0",
+        (dia, dia),
+    ).fetchone()[0]
+    pendiente = db.execute(
+        """SELECT COALESCE(SUM(v.total - COALESCE((SELECT SUM(importe) FROM pagos WHERE venta_id = v.id), 0)), 0)
+           FROM ventas v WHERE v.estado != 'Anulada' AND date(v.fecha) = ?""",
+        (dia,),
+    ).fetchone()[0]
+    return {
+        "num_ventas": ventas["n"], "total_ventas": ventas["total"], "anuladas": anuladas,
+        "por_metodo": por_metodo, "total_cobrado": sum(por_metodo.values()),
+        "devoluciones": devoluciones, "saldos_anteriores": saldos, "pendiente": pendiente,
+        "efectivo": por_metodo.get("Efectivo", 0),
+    }
+
+
+@bp.route("/cierre", methods=["GET", "POST"])
+def cierre():
+    """Cierre del día: resumen, efectivo contado y registro del cierre."""
+    db = get_db()
+    dia = request.values.get("dia") or date.today().isoformat()
+    resumen = resumen_del_dia(db, dia)
+    guardado = db.execute("SELECT * FROM cierres WHERE dia = ?", (dia,)).fetchone()
+    if request.method == "POST":
+        texto = request.form.get("efectivo_contado", "").strip()
+        try:
+            contado = parse_importe(texto, None)
+        except ValueError as e:
+            flash(str(e), "error")
+            return redirect(url_for("main.cierre", dia=dia))
+        valores = (resumen["num_ventas"], resumen["total_ventas"], resumen["total_cobrado"],
+                   json.dumps(resumen["por_metodo"], ensure_ascii=False), contado,
+                   request.form.get("notas", "").strip())
+        if guardado:
+            db.execute(
+                "UPDATE cierres SET cerrado = datetime('now', 'localtime'), num_ventas = ?, total_ventas = ?,"
+                " total_cobrado = ?, por_metodo = ?, efectivo_contado = ?, notas = ? WHERE dia = ?",
+                (*valores, dia),
+            )
+        else:
+            db.execute(
+                "INSERT INTO cierres (num_ventas, total_ventas, total_cobrado, por_metodo, efectivo_contado,"
+                " notas, dia) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (*valores, dia),
+            )
+        db.commit()
+        flash(f"Día {formato_fecha(dia)} cerrado.", "ok")
+        return redirect(url_for("main.cierre", dia=dia))
+    # ¿Hubo cobros después de cerrar? Entonces el cierre guardado quedó desactualizado
+    desactualizado = bool(guardado) and (
+        guardado["total_cobrado"] != resumen["total_cobrado"] or guardado["total_ventas"] != resumen["total_ventas"]
+    )
+    return render_template(
+        "cierre.html", dia=dia, resumen=resumen, cierre=guardado, desactualizado=desactualizado,
+        guardado_por_metodo=json.loads(guardado["por_metodo"]) if guardado else {},
     )
 
 
